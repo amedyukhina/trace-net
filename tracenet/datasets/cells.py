@@ -4,6 +4,8 @@ import torch
 import torch.utils.data
 from skimage import io
 
+from .transforms import apply_transform
+
 
 class CellDetection(torch.utils.data.Dataset):
     def __init__(self, img_folder, ann_file, transforms=None):
