@@ -43,3 +43,13 @@ def apply_transform(transforms, target, image):
     image = sample2['image'].float()
     target['boxes'] = torch.tensor(np.array(sample2[key])).float().reshape(-1, ndim)
     return target, image
+
+
+def normalize(image):
+    image = image / np.max(image)
+    if len(image.shape) < 3:
+        image = np.dstack([np.array(image)] * 3)
+    image = image.astype(np.float32)
+    maxsize = np.max(image.shape)
+    image = np.pad(image, [(0, maxsize - image.shape[0]), (0, maxsize - image.shape[1]), (0, 0)])
+    return image

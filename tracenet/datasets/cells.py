@@ -1,10 +1,9 @@
-import numpy as np
 import pandas as pd
 import torch
 import torch.utils.data
 from skimage import io
 
-from .transforms import apply_transform
+from .transforms import apply_transform, normalize
 from ..utils import xyxy_to_cxcywh, normalize_points
 
 
@@ -20,11 +19,7 @@ class CellDetection(torch.utils.data.Dataset):
 
         records = self.df[self.df['image_id'] == image_id]
 
-        image = io.imread(f'{self.image_dir}/{image_id}')
-        image = image / np.max(image)
-        if len(image.shape) < 3:
-            image = np.dstack([np.array(image)] * 3)
-        image = image.astype(np.float32)
+        image = normalize(io.imread(f'{self.image_dir}/{image_id}'))
 
         boxes = torch.as_tensor(records[['x1', 'y1', 'x2', 'y2']].values, dtype=torch.float32)
 

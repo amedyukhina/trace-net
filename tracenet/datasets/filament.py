@@ -4,7 +4,7 @@ import torch
 import torch.utils.data
 from skimage import io
 
-from .transforms import apply_transform
+from .transforms import apply_transform, normalize
 from ..utils import normalize_points
 
 
@@ -19,11 +19,7 @@ class FilamentDetection(torch.utils.data.Dataset):
         image_id = self.image_files[index]
         ann_id = self.ann_files[index]
 
-        image = io.imread(image_id)
-        image = image / np.max(image)
-        if len(image.shape) < 3:
-            image = np.dstack([np.array(image)] * 3)
-        image = image.astype(np.float32)
+        image = normalize(io.imread(image_id))
 
         df = pd.read_csv(ann_id)
         boxes = []
