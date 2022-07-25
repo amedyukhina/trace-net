@@ -5,6 +5,7 @@ import torch.utils.data
 from skimage import io
 
 from .transforms import apply_transform
+from ..utils import xyxy_to_cxcywh, normalize_points
 
 
 class CellDetection(torch.utils.data.Dataset):
@@ -35,6 +36,7 @@ class CellDetection(torch.utils.data.Dataset):
 
         # suppose all instances are not crowd
         iscrowd = torch.zeros((boxes.shape[0],), dtype=torch.int64)
+        imgshape = image.shape[:2]
 
         target = dict(
             boxes=boxes,
@@ -46,6 +48,7 @@ class CellDetection(torch.utils.data.Dataset):
 
         if self.transforms:
             target, image = apply_transform(self.transforms, target, image)
+        target['boxes'] = normalize_points(xyxy_to_cxcywh(target['boxes']), imgshape)
         return image, target
 
     def __len__(self) -> int:

@@ -5,6 +5,7 @@ import torch.utils.data
 from skimage import io
 
 from .transforms import apply_transform
+from ..utils import normalize_points
 
 
 class FilamentDetection(torch.utils.data.Dataset):
@@ -36,6 +37,7 @@ class FilamentDetection(torch.utils.data.Dataset):
         labels = torch.ones((boxes.shape[0],), dtype=torch.int64)
         iscrowd = torch.zeros((boxes.shape[0],), dtype=torch.int64)
         point_labels = list(np.arange((boxes.shape[-1] // 2)).astype(str)) * boxes.shape[0]
+        imgshape = image.shape[:2]
 
         target = dict(
             boxes=boxes,
@@ -48,6 +50,7 @@ class FilamentDetection(torch.utils.data.Dataset):
 
         if self.transforms:
             target, image = apply_transform(self.transforms, target, image)
+        target['boxes'] = normalize_points(target['boxes'], imgshape)
         return image, target
 
     def __len__(self) -> int:
