@@ -1,6 +1,8 @@
 import numpy as np
 import pylab as plt
 
+from .utils import denormalize_points, cxcywh_to_xyxy
+
 COLORS = [[0.000, 0.447, 0.741], [0.850, 0.325, 0.098], [0.929, 0.694, 0.125],
           [0.494, 0.184, 0.556], [0.466, 0.674, 0.188], [0.301, 0.745, 0.933]]
 CLASSES = [
@@ -11,12 +13,10 @@ CLASSES = [
 def plot_results(img, boxes, prob=None, classes=None):
     if classes is None:
         classes = CLASSES
-    # normalize boxes
-    img_w, img_h = img.shape[-2:]
-    boxes = boxes.reshape(boxes.shape[0], -1, 2)
-    b = boxes.numpy().copy()
-    b[:, :, 1] = boxes[:, :, 0] * img_h
-    b[:, :, 0] = boxes[:, :, 1] * img_w
+
+    boxes = denormalize_points(boxes, img.shape[-2:])
+    if boxes.shape[-1] == 4:
+        boxes = cxcywh_to_xyxy(boxes)
 
     # normalize the image
     img = img.numpy()
@@ -29,8 +29,9 @@ def plot_results(img, boxes, prob=None, classes=None):
     colors = COLORS * 100
     for i in range(len(boxes)):
 
-        if len(boxes[i]) != 2:
-            ax.add_patch(plt.Polygon(boxes[i], fill=False, color=colors[i], linewidth=3, closed=False))
+        if len(boxes[i]) != 4:
+            box = boxes[i].reshape(-1, 2)
+            ax.add_patch(plt.Polygon(box, fill=False, color=colors[i], linewidth=3, closed=False))
         else:
             xmin, ymin, xmax, ymax = np.array(boxes[i]).ravel()
             ax.add_patch(plt.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
