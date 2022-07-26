@@ -31,7 +31,7 @@ def __forward_pass(samples, targets, model, device, loss_function, weight_dict):
     return losses
 
 
-def train(train_dl, val_dl, model, loss_function, metric, config, log_tensorboard=False):
+def train(train_dl, val_dl, model, loss_function, config, log_tensorboard=False):
     device = get_device()
     model.to(device)
     best_metric = 10 ** 10
