@@ -90,7 +90,7 @@ def train(train_dl, val_dl, model, loss_function, config, log_tensorboard=False)
         with torch.no_grad():
             for samples, targets in val_dl:
                 step += 1
-                val_losses = __forward_pass(samples, targets, model, device, loss_function, weight_dict)
+                val_losses = __forward_pass(samples, targets, model, device, loss_function, weight_dict)[0]
                 loss_value = val_losses.item()
                 val_loss += loss_value
 
