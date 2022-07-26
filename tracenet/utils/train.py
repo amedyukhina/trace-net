@@ -23,7 +23,7 @@ def __log_images(writer, samples, targets, outputs, iteration):
 
 def __forward_pass(samples, targets, model, device, loss_function, weight_dict):
     samples = samples.to(device)
-    targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+    targets = {k: v.to(device) for k, v in targets.items() if isinstance(v, torch.Tensor)}
     outputs = model(samples)
     loss_dict = loss_function(outputs, targets)
     losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
@@ -43,6 +43,9 @@ def train(train_dl, val_dl, model, loss_function, config, log_tensorboard=False)
                                                               factor=config.factor,
                                                               patience=config.patience)
     tbwriter = None
+    if log_tensorboard:
+        tbwriter = SummaryWriter(log_dir=os.path.join(config.model_path, 'logs'))
+
     weight_dict = {'loss_ce': 1, 'loss_bbox': config.bbox_loss_coef}
 
     for epoch in range(config.epochs):
