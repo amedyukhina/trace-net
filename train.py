@@ -21,13 +21,13 @@ if __name__ == '__main__':
                         help='Data type (cell or mt)', required=True)
     parser.add_argument('-dd', '--data-dir', type=str,
                         help='Directory with the data (training, validation, test)', required=True)
-    parser.add_argument('-s', '--max-size', type=int, default=1024,
+    parser.add_argument('-s', '--maxsize', type=int, default=1024,
                         help='Maximum image size')
     parser.add_argument('-n', '--n-points', type=int, default=10,
                         help='Number of points in the trace')
-    parser.add_argument('-t', '--train-dirname', type=str, default='train',
+    parser.add_argument('-t', '--train-dir', type=str, default='train',
                         help='Subdirectory within "data-dir" to use for training')
-    parser.add_argument('-v', '--val-dirname', type=str, default='val',
+    parser.add_argument('-v', '--val-dir', type=str, default='val',
                         help='Subdirectory within "data-dir" to use for validation')
     parser.add_argument('-m', '--model-path', type=str,
                         help='Directory for model checkpoints', default='model')
@@ -36,6 +36,8 @@ if __name__ == '__main__':
     parser.add_argument('-b', '--batch-size', type=int, default=2,
                         help='Batch size')
     parser.add_argument('-lr', '--lr', type=float, default=0.0001, help='Starting learning rate')
+    parser.add_argument('-bl', '--bbox-loss-coef', type=float, default=5,
+                        help='Weight for bbox loss')
     parser.add_argument('-wd', '--weight-decay', type=float, default=0.0005,
                         help='Weight decay for Adam optimizer')
     parser.add_argument('-f', '--factor', type=float, default=0.1,
