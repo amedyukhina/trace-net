@@ -23,7 +23,7 @@ def __log_images(writer, samples, targets, outputs, iteration):
 
 def __forward_pass(samples, targets, model, device, loss_function, weight_dict):
     samples = samples.to(device)
-    targets = {k: v.to(device) for k, v in targets.items() if isinstance(v, torch.Tensor)}
+    targets = [{k: v.to(device) for k, v in t.items() if isinstance(v, torch.Tensor)} for t in targets]
     outputs = model(samples)
     loss_dict = loss_function(outputs, targets)
     losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
