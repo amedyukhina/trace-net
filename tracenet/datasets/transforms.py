@@ -6,7 +6,9 @@ from albumentations.pytorch.transforms import ToTensorV2
 
 
 def collate_fn(batch):
-    return tuple(zip(*batch))
+    imgs, targets = tuple(zip(*batch))
+    imgs = torch.stack(imgs)
+    return imgs, targets
 
 
 def get_train_transform(**kwargs):
