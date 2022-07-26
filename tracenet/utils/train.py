@@ -95,7 +95,7 @@ def train(train_dl, val_dl, model, loss_function, config, log_tensorboard=False)
             tbwriter.add_scalar('validation loss', epoch_loss, epoch + 1)
             samples, targets = next(iter(val_dl))
             with torch.no_grad():
-                outputs = model(samples.to(device)).cpu()
+                outputs = model(samples.to(device))
             __log_images(tbwriter, samples, targets, outputs, epoch + 1)
 
         lr_scheduler.step(epoch_loss)
