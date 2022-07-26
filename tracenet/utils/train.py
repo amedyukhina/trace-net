@@ -43,10 +43,6 @@ def train(train_dl, val_dl, model, loss_function, config, log_tensorboard=False)
                                                               factor=config.factor,
                                                               patience=config.patience)
     tbwriter = None
-    if log_tensorboard:
-        tbwriter = SummaryWriter(log_dir=os.path.join(config.model_path, 'logs'))
-        tbwriter.add_graph(model)
-
     weight_dict = {'loss_ce': 1, 'loss_bbox': config.bbox_loss_coef}
 
     for epoch in range(config.epochs):
