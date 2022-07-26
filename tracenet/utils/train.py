@@ -35,7 +35,7 @@ def train(train_dl, val_dl, model, loss_function, config, log_tensorboard=False)
     device = get_device()
     model.to(device)
     best_metric = 10 ** 10
-    param_dict = [{"params": [p for n, p in model.parameters() if p.requires_grad]}]
+    param_dict = [{"params": [p for p in model.parameters() if p.requires_grad]}]
     optimizer = torch.optim.AdamW(param_dict, lr=config.lr,
                                   weight_decay=config.weight_decay)
     lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
