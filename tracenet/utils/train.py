@@ -1,5 +1,6 @@
 import os
 
+import numpy as np
 import torch
 import wandb
 from torch.utils.tensorboard import SummaryWriter
@@ -8,16 +9,21 @@ from ..utils import get_device, save_model
 from ..utils.plot import plot_results
 
 
+def __normalize(img):
+    img = img - np.min(img)
+    return (img * 255. / np.max(img)).astype(np.uint8)
+
+
 def __log_images(writer, samples, targets, outputs, iteration):
     probas = outputs['pred_logits'].softmax(-1)[0, :, :-1]
     keep = probas.max(-1).values > 0.7
-    writer.add_image('input', samples[0].numpy().transpose(1, 2, 0) * 255,
+    writer.add_image('input', __normalize(samples[0].numpy().transpose(1, 2, 0)),
                      iteration, dataformats='HWC')
-    writer.add_image('output', plot_results(samples[0],
-                                            outputs['pred_boxes'][0, keep], probas[keep],
+    writer.add_image('output', plot_results(samples[0].cpu(),
+                                            outputs['pred_boxes'][0, keep].cpu(), probas[keep].cpu(),
                                             return_image=True),
                      iteration, dataformats='HWC')
-    writer.add_image('target', plot_results(samples[0], targets['boxes'][0], return_image=True),
+    writer.add_image('target', plot_results(samples[0].cpu(), targets[0]['boxes'].cpu(), return_image=True),
                      iteration, dataformats='HWC')
 
 
@@ -50,7 +56,6 @@ def train(train_dl, val_dl, model, loss_function, config, log_tensorboard=False)
     weight_dict = {'loss_ce': 1, 'loss_bbox': config.bbox_loss_coef}
 
     for epoch in range(config.epochs):
-
         model.train()
         loss_function.train()
         epoch_loss = 0
@@ -84,7 +89,7 @@ def train(train_dl, val_dl, model, loss_function, config, log_tensorboard=False)
                 step += 1
                 val_losses = __forward_pass(samples, targets, model, device, loss_function, weight_dict)
                 loss_value = val_losses.item()
-                epoch_loss += loss_value
+                val_loss += loss_value
 
             val_loss /= step
 
@@ -92,13 +97,13 @@ def train(train_dl, val_dl, model, loss_function, config, log_tensorboard=False)
         wandb.log({'validation loss': val_loss})
 
         if log_tensorboard:
-            tbwriter.add_scalar('validation loss', epoch_loss, epoch + 1)
+            tbwriter.add_scalar('validation loss', val_loss, epoch + 1)
             samples, targets = next(iter(val_dl))
             with torch.no_grad():
                 outputs = model(samples.to(device))
             __log_images(tbwriter, samples, targets, outputs, epoch + 1)
 
-        lr_scheduler.step(epoch_loss)
+        lr_scheduler.step(val_loss)
 
         if val_loss < best_metric:
             best_metric = val_loss
