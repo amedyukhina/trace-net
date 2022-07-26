@@ -34,7 +34,7 @@ def __forward_pass(samples, targets, model, device, loss_function, weight_dict):
     loss_dict = loss_function(outputs, targets)
     losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
 
-    return losses
+    return losses, loss_dict
 
 
 def train(train_dl, val_dl, model, loss_function, config, log_tensorboard=False):
@@ -63,14 +63,17 @@ def train(train_dl, val_dl, model, loss_function, config, log_tensorboard=False)
         for samples, targets in train_dl:
             step += 1
             optimizer.zero_grad()
-            losses = __forward_pass(samples, targets, model, device, loss_function, weight_dict)
+            losses, loss_dict = __forward_pass(samples, targets, model, device, loss_function, weight_dict)
             loss_value = losses.item()
             losses.backward()
             optimizer.step()
             epoch_loss += loss_value
             wandb.log({'training loss': loss_value})
+            wandb.log({k: loss_dict[k] for k in loss_dict.keys()})
             if log_tensorboard:
                 tbwriter.add_scalar('training loss', loss_value, step)
+                for k in loss_dict.keys():
+                    tbwriter.add_scalar(k, loss_dict[k], step)
         epoch_loss /= step
         print(f"epoch {epoch + 1} training loss: {epoch_loss:.4f}")
         wandb.log({'average training loss': epoch_loss,
