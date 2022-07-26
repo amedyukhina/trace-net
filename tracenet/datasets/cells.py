@@ -8,18 +8,19 @@ from ..utils import xyxy_to_cxcywh, normalize_points
 
 
 class CellDetection(torch.utils.data.Dataset):
-    def __init__(self, img_folder, ann_file, transforms=None):
+    def __init__(self, img_folder, ann_file, transforms=None, maxsize=None):
         self.transforms = transforms
         self.df = pd.read_csv(ann_file)
         self.image_ids = self.df['image_id'].unique()
         self.image_dir = img_folder
+        self.maxsize = maxsize
 
     def __getitem__(self, index: int):
         image_id = self.image_ids[index]
 
         records = self.df[self.df['image_id'] == image_id]
 
-        image = normalize(io.imread(f'{self.image_dir}/{image_id}'))
+        image = normalize(io.imread(f'{self.image_dir}/{image_id}'), maxsize=self.maxsize)
 
         boxes = torch.as_tensor(records[['x1', 'y1', 'x2', 'y2']].values, dtype=torch.float32)
 

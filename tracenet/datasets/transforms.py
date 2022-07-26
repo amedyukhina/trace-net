@@ -45,11 +45,14 @@ def apply_transform(transforms, target, image):
     return target, image
 
 
-def normalize(image):
+def normalize(image, maxsize=None):
     image = image / np.max(image)
     if len(image.shape) < 3:
         image = np.dstack([np.array(image)] * 3)
     image = image.astype(np.float32)
-    maxsize = np.max(image.shape)
+    if maxsize is None:
+        maxsize = np.max(image.shape)
+    else:
+        maxsize = max(maxsize, np.max(image.shape))
     image = np.pad(image, [(0, maxsize - image.shape[0]), (0, maxsize - image.shape[1]), (0, 0)])
     return image

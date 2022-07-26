@@ -9,17 +9,18 @@ from ..utils import normalize_points
 
 
 class FilamentDetection(torch.utils.data.Dataset):
-    def __init__(self, image_files, ann_files, transforms=None, col_id='id'):
+    def __init__(self, image_files, ann_files, transforms=None, col_id='id', maxsize=None):
         self.transforms = transforms
         self.ann_files = ann_files
         self.image_files = image_files
         self.col_id = col_id
+        self.maxsize = maxsize
 
     def __getitem__(self, index: int):
         image_id = self.image_files[index]
         ann_id = self.ann_files[index]
 
-        image = normalize(io.imread(image_id))
+        image = normalize(io.imread(image_id), maxsize=self.maxsize)
 
         df = pd.read_csv(ann_id)
         boxes = []
