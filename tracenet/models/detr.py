@@ -12,5 +12,7 @@ def build_model(n_classes=1, n_points=10, pretrained=True, state_dict_path=None)
 
     if state_dict_path is not None:
         state_dict = torch.load(state_dict_path)
-        model.load_state_dict(state_dict['model'])
+        if 'model' in state_dict:
+            state_dict = state_dict['model']
+        model.load_state_dict(state_dict)
     return model
