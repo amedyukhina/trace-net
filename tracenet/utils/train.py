@@ -34,6 +34,7 @@ def __forward_pass(samples, targets, model, device, loss_function, weight_dict):
 def train(train_dl, val_dl, model, loss_function, config, log_tensorboard=False):
     device = get_device()
     model.to(device)
+    loss_function.to(device)
     best_metric = 10 ** 10
     param_dict = [{"params": [p for p in model.parameters() if p.requires_grad]}]
     optimizer = torch.optim.AdamW(param_dict, lr=config.lr,
