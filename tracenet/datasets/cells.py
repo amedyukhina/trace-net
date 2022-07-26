@@ -2,9 +2,18 @@ import pandas as pd
 import torch
 import torch.utils.data
 from skimage import io
+import numpy as np
 
 from .transforms import apply_transform, normalize
 from ..utils import xyxy_to_cxcywh, normalize_points
+
+
+def crop_out_of_shape(boxes, shape):
+    boxes[:, 0] = np.where(boxes[:, 0] < 0, 0, boxes[:, 0])
+    boxes[:, 1] = np.where(boxes[:, 1] < 0, 0, boxes[:, 1])
+    boxes[:, 2] = np.where(boxes[:, 2] >= shape[1], shape[1] - 1, boxes[:, 2])
+    boxes[:, 3] = np.where(boxes[:, 3] >= shape[0], shape[0] - 1, boxes[:, 3])
+    return boxes
 
 
 class CellDetection(torch.utils.data.Dataset):
@@ -21,8 +30,9 @@ class CellDetection(torch.utils.data.Dataset):
         records = self.df[self.df['image_id'] == image_id]
 
         image = normalize(io.imread(f'{self.image_dir}/{image_id}'), maxsize=self.maxsize)
-
-        boxes = torch.as_tensor(records[['x1', 'y1', 'x2', 'y2']].values, dtype=torch.float32)
+        boxes = records[['x1', 'y1', 'x2', 'y2']].values
+        boxes = crop_out_of_shape(boxes, image.shape[:2])
+        boxes = torch.as_tensor(boxes, dtype=torch.float32)
 
         area = torch.as_tensor((boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0]),
                                dtype=torch.float32)
