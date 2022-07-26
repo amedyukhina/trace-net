@@ -28,7 +28,7 @@ class CellDetection(torch.utils.data.Dataset):
                                dtype=torch.float32)
 
         # there is only one class
-        labels = torch.ones((boxes.shape[0],), dtype=torch.int64)
+        labels = torch.zeros((boxes.shape[0],), dtype=torch.int64)
 
         # suppose all instances are not crowd
         iscrowd = torch.zeros((boxes.shape[0],), dtype=torch.int64)

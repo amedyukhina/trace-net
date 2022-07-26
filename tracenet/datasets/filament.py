@@ -31,7 +31,7 @@ class FilamentDetection(torch.utils.data.Dataset):
         boxes = torch.as_tensor(boxes, dtype=torch.float32)
 
         area = torch.ones((boxes.shape[0],), dtype=torch.float32)
-        labels = torch.ones((boxes.shape[0],), dtype=torch.int64)
+        labels = torch.zeros((boxes.shape[0],), dtype=torch.int64)
         iscrowd = torch.zeros((boxes.shape[0],), dtype=torch.int64)
         point_labels = list(np.arange((boxes.shape[-1] // 2)).astype(str)) * boxes.shape[0]
 
