@@ -40,7 +40,7 @@ class HungarianMatcher(nn.Module):
         out_bbox = outputs["pred_boxes"].flatten(0, 1)  # [batch_size * num_queries, n_features]
 
         # Also concat the target labels and boxes
-        tgt_bbox = torch.cat([v for v in targets["boxes"]])
+        tgt_bbox = torch.cat([v["boxes"] for v in targets])
 
         # Compute the L1 cost between boxes
         cost_bbox = torch.cdist(out_bbox, tgt_bbox, p=1)
@@ -48,6 +48,6 @@ class HungarianMatcher(nn.Module):
         # Final cost matrix
         C = cost_bbox.view(bs, num_queries, -1).cpu()
 
-        sizes = [len(v) for v in targets["boxes"]]
+        sizes = [len(v["boxes"]) for v in targets]
         indices = [linear_sum_assignment(c[i]) for i, c in enumerate(C.split(sizes, -1))]
         return [(torch.as_tensor(i, dtype=torch.int64), torch.as_tensor(j, dtype=torch.int64)) for i, j in indices]
