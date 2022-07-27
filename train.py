@@ -96,7 +96,7 @@ if __name__ == '__main__':
                                                                           label_fields=['point_labels'],
                                                                           remove_invisible=False,
                                                                           angle_in_degrees=True)),
-                    maxsize=config.maxsize
+                    maxsize=config.maxsize, n_points=config.n_points
                 )
             )
         ds_train, ds_val = ds
