@@ -2,7 +2,7 @@ import numpy as np
 import pylab as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
-from tracenet.utils.points import denormalize_points, cxcywh_to_xyxy
+from tracenet.utils.points import denormalize_points, cxcywh_to_xyxy, bounding_line_to_points
 
 COLORS = [[0.000, 0.447, 0.741], [0.850, 0.325, 0.098], [0.929, 0.694, 0.125],
           [0.494, 0.184, 0.556], [0.466, 0.674, 0.188], [0.301, 0.745, 0.933]]
@@ -11,12 +11,14 @@ CLASSES = [
 ]
 
 
-def plot_results(img, boxes, prob=None, classes=None, return_image=False, size=6):
+def plot_results(img, boxes, mt=True, prob=None, classes=None, return_image=False, size=6):
     if classes is None:
         classes = CLASSES
 
     boxes = denormalize_points(boxes, img.shape[-2:])
-    if boxes.shape[-1] == 4:
+    if mt:
+        boxes = bounding_line_to_points(boxes)
+    else:
         boxes = cxcywh_to_xyxy(boxes)
 
     # normalize the image
@@ -30,7 +32,7 @@ def plot_results(img, boxes, prob=None, classes=None, return_image=False, size=6
     colors = COLORS * 100
     for i in range(len(boxes)):
 
-        if len(boxes[i]) != 4:
+        if mt:
             box = boxes[i].reshape(-1, 2)
             ax.add_patch(plt.Polygon(box, fill=False, color=colors[i], linewidth=3, closed=False))
         else:

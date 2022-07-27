@@ -5,7 +5,7 @@ import torch.utils.data
 from skimage import io
 
 from .transforms import apply_transform, normalize
-from ..utils import normalize_points
+from ..utils import normalize_points, points_to_bounding_line
 
 
 class FilamentDetection(torch.utils.data.Dataset):
@@ -29,8 +29,8 @@ class FilamentDetection(torch.utils.data.Dataset):
         boxes = []
         for s in df[self.col_id].unique():
             cur_df = df[df[self.col_id] == s].reset_index(drop=True)
-            if len(cur_df[self.cols].values.ravel()) != 2 * self.n_points:
-                cur_df = make_points_equally_spaced(cur_df, self.cols, n_points=self.n_points)
+            # if len(cur_df[self.cols].values.ravel()) != 2 * self.n_points:
+            #     cur_df = make_points_equally_spaced(cur_df, self.cols, n_points=self.n_points)
             coords = cur_df[self.cols].values.ravel()
             boxes.append(coords)
 
@@ -53,6 +53,7 @@ class FilamentDetection(torch.utils.data.Dataset):
         if self.transforms:
             target, image = apply_transform(self.transforms, target, image)
         target['boxes'] = normalize_points(target['boxes'], image.shape[-2:])
+        target['boxes'] = points_to_bounding_line(target['boxes'])
         target['area'] = torch.ones((target['boxes'].shape[0],), dtype=torch.float32)
         return image, target
 
