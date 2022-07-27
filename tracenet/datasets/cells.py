@@ -36,11 +36,7 @@ class CellDetection(torch.utils.data.Dataset):
 
         area = torch.as_tensor((boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0]),
                                dtype=torch.float32)
-
-        # there is only one class
         labels = torch.zeros((boxes.shape[0],), dtype=torch.int64)
-
-        # suppose all instances are not crowd
         iscrowd = torch.zeros((boxes.shape[0],), dtype=torch.int64)
 
         target = dict(
@@ -53,6 +49,9 @@ class CellDetection(torch.utils.data.Dataset):
 
         if self.transforms:
             target, image = apply_transform(self.transforms, target, image)
+        with target['boxes'] as boxes:
+            target['area'] = torch.as_tensor((boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0]),
+                                             dtype=torch.float32)
         target['boxes'] = normalize_points(xyxy_to_cxcywh(target['boxes']), image.shape[-2:])
         return image, target
 

@@ -47,6 +47,7 @@ class FilamentDetection(torch.utils.data.Dataset):
         if self.transforms:
             target, image = apply_transform(self.transforms, target, image)
         target['boxes'] = normalize_points(target['boxes'], image.shape[-2:])
+        target['area'] = torch.ones((target['boxes'].shape[0],), dtype=torch.float32)
         return image, target
 
     def __len__(self) -> int:

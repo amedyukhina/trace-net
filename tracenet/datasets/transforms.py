@@ -44,6 +44,9 @@ def apply_transform(transforms, target, image):
 
     image = sample2['image'].float()
     target['boxes'] = torch.tensor(np.array(sample2[key])).float().reshape(-1, ndim)
+    for col in ['labels', 'iscrowd']:
+        if col in target:
+            target[col] = torch.zeros((target['boxes'].shape[0],), dtype=torch.int64)
     return target, image
 
 
