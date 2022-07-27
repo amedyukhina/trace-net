@@ -85,6 +85,7 @@ def train(train_dl, val_dl, model, loss_function, config, log_tensorboard=False)
             tbwriter.add_scalar('learning rate', optimizer.param_groups[0]['lr'], epoch + 1)
 
         model.eval()
+        loss_function.eval()
         val_loss = 0
         step = 0
         with torch.no_grad():
