@@ -1,8 +1,8 @@
+import numpy as np
 import pandas as pd
 import torch
 import torch.utils.data
 from skimage import io
-import numpy as np
 
 from .transforms import apply_transform, normalize
 from ..utils import xyxy_to_cxcywh, normalize_points
