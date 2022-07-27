@@ -11,7 +11,7 @@ CLASSES = [
 ]
 
 
-def plot_results(img, boxes, mt=True, prob=None, classes=None, return_image=False, size=6):
+def plot_results(img, boxes, prob=None, classes=None, return_image=False, size=6, mt=True):
     if classes is None:
         classes = CLASSES
 
