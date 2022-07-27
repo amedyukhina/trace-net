@@ -53,6 +53,10 @@ def points_to_bounding_line(x):
     b = [y_c, x_c, l, a]
     return torch.stack(b, dim=-1)
 
-#
-# def bounding_line_to_points(x):
-#     x_c, y_c, l, a = x.unbind(-1)
+
+def bounding_line_to_points(x):
+    y_c, x_c, l, a = x.unbind(-1)
+    x_d = l / 2 * torch.cos(a)
+    y_d = l / 2 * torch.sin(a)
+    b = [y_c - y_d, x_c - x_d, y_c + y_d, x_c + x_d]
+    return torch.stack(b, dim=-1)
