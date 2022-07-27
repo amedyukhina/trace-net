@@ -22,3 +22,17 @@ def get_model_name(log_progress):
     else:
         model_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     return model_name
+
+
+def unit_vector(vector):
+    vector = torch.as_tensor(vector, dtype=torch.float)
+    return vector / torch.norm(vector)
+
+
+def angle_between(v1, v2, degrees=False):
+    v1_u = unit_vector(v1)
+    v2_u = unit_vector(v2)
+    angle = torch.arccos(torch.clip(torch.dot(v1_u, v2_u), -1.0, 1.0))
+    if degrees:
+        angle = angle / torch.pi * 180
+    return angle
