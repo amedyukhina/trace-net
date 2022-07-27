@@ -49,9 +49,8 @@ class CellDetection(torch.utils.data.Dataset):
 
         if self.transforms:
             target, image = apply_transform(self.transforms, target, image)
-        with target['boxes'] as boxes:
-            target['area'] = torch.as_tensor((boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0]),
-                                             dtype=torch.float32)
+        x2, x1, y2, y1 = (target['boxes'][:, 3], target['boxes'][:, 1], target['boxes'][:, 2], target['boxes'][:, 0])
+        target['area'] = torch.as_tensor((x2 - x1) * (y2 - y1), dtype=torch.float32)
         target['boxes'] = normalize_points(xyxy_to_cxcywh(target['boxes']), image.shape[-2:])
         return image, target
 
