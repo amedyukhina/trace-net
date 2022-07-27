@@ -73,7 +73,7 @@ class Criterion(nn.Module):
         src_boxes = outputs['pred_boxes'][idx]
         target_boxes = torch.cat([t['boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0)
 
-        loss_bbox = F.l1_loss(src_boxes, target_boxes, reduction='none')
+        loss_bbox = F.mse_loss(src_boxes, target_boxes, reduction='none')
 
         losses = {'loss_bbox': loss_bbox.sum() / num_boxes}
 
