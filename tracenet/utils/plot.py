@@ -2,7 +2,7 @@ import numpy as np
 import pylab as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
-from tracenet.utils.points import denormalize_points, cxcywh_to_xyxy, bounding_line_to_points
+from tracenet.utils.points import denormalize_points, cxcywh_to_xyxy, bounding_line_to_points, points_to_bounding_line
 
 COLORS = [[0.000, 0.447, 0.741], [0.850, 0.325, 0.098], [0.929, 0.694, 0.125],
           [0.494, 0.184, 0.556], [0.466, 0.674, 0.188], [0.301, 0.745, 0.933]]
@@ -15,10 +15,11 @@ def plot_results(img, boxes, mt=True, prob=None, classes=None, return_image=Fals
     if classes is None:
         classes = CLASSES
 
-    boxes = denormalize_points(boxes, img.shape[-2:])
     if mt:
         boxes = bounding_line_to_points(boxes)
+        boxes = denormalize_points(boxes, img.shape[-2:])
     else:
+        boxes = denormalize_points(boxes, img.shape[-2:])
         boxes = cxcywh_to_xyxy(boxes)
 
     # normalize the image
