@@ -8,7 +8,7 @@ import wandb
 from torch.utils.data import DataLoader
 
 from tracenet import get_train_transform, get_valid_transform, collate_fn
-from tracenet.datasets import CellDetection, FilamentDetection
+from tracenet.datasets import FilamentDetection
 from tracenet.models.criterion import Criterion
 from tracenet.models.detr import build_model
 from tracenet.models.matcher import HungarianMatcher
@@ -17,8 +17,6 @@ from tracenet.utils.train import train
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--data', type=str,
-                        help='Data type (cell or mt)', required=True)
     parser.add_argument('-dd', '--data-dir', type=str,
                         help='Directory with the data (training, validation, test)', required=True)
     parser.add_argument('-s', '--maxsize', type=int, default=1024,
@@ -74,32 +72,23 @@ if __name__ == '__main__':
 
     # Setup data loaders
     path = Path(config.data_dir)
-    if config.data == 'cell':
-        ds_train, ds_val = [
-            CellDetection(
-                path / 'maxprojections', path / rf'bboxes_for_cell_detection_{dset}.csv',
-                transforms=transform(bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels'])),
-                maxsize=config.maxsize
-            ) for dset, transform in zip([config.train_dir, config.val_dir],
-                                         [get_train_transform, get_valid_transform])]
-    else:
-        ds = []
-        for dset, transform in zip([config.train_dir, config.val_dir],
-                                   [get_train_transform, get_valid_transform]):
-            files = os.listdir(path / dset / 'img')
-            files.sort()
-            ds.append(
-                FilamentDetection(
-                    [path / dset / 'img' / fn for fn in files],
-                    [path / dset / 'gt' / fn.replace('.tif', '.csv') for fn in files],
-                    transforms=transform(keypoint_params=A.KeypointParams(format='xy',
-                                                                          label_fields=['point_labels'],
-                                                                          remove_invisible=False,
-                                                                          angle_in_degrees=True)),
-                    maxsize=config.maxsize, n_points=config.n_points
-                )
+    ds = []
+    for dset, transform in zip([config.train_dir, config.val_dir],
+                               [get_train_transform, get_valid_transform]):
+        files = os.listdir(path / dset / 'img')
+        files.sort()
+        ds.append(
+            FilamentDetection(
+                [path / dset / 'img' / fn for fn in files],
+                [path / dset / 'gt' / fn.replace('.tif', '.csv') for fn in files],
+                transforms=transform(keypoint_params=A.KeypointParams(format='xy',
+                                                                      label_fields=['point_labels'],
+                                                                      remove_invisible=False,
+                                                                      angle_in_degrees=True)),
+                maxsize=config.maxsize, n_points=config.n_points
             )
-        ds_train, ds_val = ds
+        )
+    ds_train, ds_val = ds
 
     dl_train = DataLoader(ds_train, shuffle=True, collate_fn=collate_fn,
                           batch_size=config.batch_size, num_workers=config.batch_size)
