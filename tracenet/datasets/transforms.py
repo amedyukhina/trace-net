@@ -11,12 +11,18 @@ def collate_fn(batch):
     return imgs, targets
 
 
-def get_train_transform(**kwargs):
+def get_train_transform_spatial(**kwargs):
     return A.Compose([
         A.Flip(p=0.5),
         A.Rotate(p=1, border_mode=0, value=0, limit=10),
         A.Transpose(p=0.5),
-        # A.RandomBrightnessContrast(p=0.5),
+        ToTensorV2(p=1.0)
+    ], **kwargs)
+
+
+def get_train_transform_intensity(**kwargs):
+    return A.Compose([
+        A.RandomBrightnessContrast(p=0.5),
         ToTensorV2(p=1.0)
     ], **kwargs)
 
@@ -50,10 +56,10 @@ def apply_transform(transforms, target, image):
     return target, image
 
 
-def normalize(image, maxsize=None):
+def norm_pad_to_gray(image, maxsize=None):
     image = image / np.max(image)
-    if len(image.shape) < 3:
-        image = np.dstack([np.array(image)] * 3)
+    if len(image.shape) > 2:
+        image = np.max(image, axis=-1)
     image = image.astype(np.float32)
     if maxsize is None:
         maxsize = np.max(image.shape)
