@@ -13,7 +13,7 @@ KEYPOINT_PARAMS = A.KeypointParams(format='xy',
 def collate_fn(batch):
     imgs, targets, labels, masks = tuple(zip(*batch))
     imgs = torch.stack(imgs)
-    labels = torch.stack(labels),
+    labels = torch.stack(labels)
     masks = torch.stack(masks)
     return imgs, targets, labels, masks
 

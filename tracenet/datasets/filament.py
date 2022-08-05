@@ -59,14 +59,14 @@ class FilamentDetection(torch.utils.data.Dataset):
 
         if self.spatial_transforms:
             target, image = apply_transform(self.spatial_transforms, target, image)
-        image, labels, mask = image
+        image, label, mask = image
         image = torch.stack([image] * 3)
         if self.intensity_transforms:
             target, image = apply_transform(self.intensity_transforms, target, np.moveaxis(image.numpy(), 0, -1))
         target['boxes'] = normalize_points(target['boxes'], image.shape[-2:])
         target['boxes'] = points_to_bounding_line(target['boxes'])
         target['area'] = torch.ones((target['boxes'].shape[0],), dtype=torch.float32)
-        return image, target, labels, mask
+        return image, target, label, mask
 
     def __len__(self) -> int:
         return len(self.image_files)
