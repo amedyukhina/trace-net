@@ -4,14 +4,16 @@ import torch
 import torch.utils.data
 from skimage import io
 
-from .transforms import apply_transform, normalize
+from .transforms import apply_transform, norm_pad_to_gray
 from ..utils import normalize_points, points_to_bounding_line
 
 
 class FilamentDetection(torch.utils.data.Dataset):
-    def __init__(self, image_files, ann_files, transforms=None,
+    def __init__(self, image_files, ann_files,
+                 spatial_transforms=None, intensity_transforms=None,
                  col_id='id', maxsize=None, n_points=10, cols=None):
-        self.transforms = transforms
+        self.intensity_transforms = intensity_transforms
+        self.spatial_transforms = spatial_transforms
         self.ann_files = ann_files
         self.image_files = image_files
         self.col_id = col_id
@@ -23,9 +25,12 @@ class FilamentDetection(torch.utils.data.Dataset):
         image_id = self.image_files[index]
         ann_id = self.ann_files[index]
 
-        image = normalize(io.imread(image_id), maxsize=self.maxsize)
+        image = norm_pad_to_gray(io.imread(image_id), maxsize=self.maxsize)
 
         df = pd.read_csv(ann_id)
+        mask = generate_labeled_mask(df, image.shape, ['y', 'x'], n_interp=30, id_col=self.col_id)
+        image = np.dstack([image, mask, (mask > 0) * 1])
+
         boxes = []
         for s in df[self.col_id].unique():
             cur_df = df[df[self.col_id] == s].reset_index(drop=True)
@@ -50,12 +55,16 @@ class FilamentDetection(torch.utils.data.Dataset):
             point_labels=point_labels
         )
 
-        if self.transforms:
-            target, image = apply_transform(self.transforms, target, image)
+        if self.spatial_transforms:
+            target, image = apply_transform(self.spatial_transforms, target, image)
         target['boxes'] = normalize_points(target['boxes'], image.shape[-2:])
         target['boxes'] = points_to_bounding_line(target['boxes'])
         target['area'] = torch.ones((target['boxes'].shape[0],), dtype=torch.float32)
-        return image, target
+        image, labels, mask = image.unbind(-1)
+        image = torch.stack([image] * 3)
+        if self.intensity_transforms:
+            target, image = apply_transform(self.intensity_transforms, target, np.moveaxis(image.numpy(), 0, -1))
+        return image, target, labels, mask
 
     def __len__(self) -> int:
         return len(self.image_files)
@@ -90,16 +99,34 @@ def make_points_equally_spaced(df, cols, n_points=10):
     return n_df
 
 
+def generate_labeled_mask(df, shape, cols, n_interp=30, id_col='id'):
+    df_interp = _interpolate_points(df, n_interp=n_interp, cols=cols, id_col=id_col)
+    mt_img = _create_mt_image(df_interp, shape=shape, cols=cols)
+    return mt_img
+
+
 def _dist(x, y):
     return np.sqrt(np.sum((x - y) ** 2, axis=1))
 
 
-def _interpolate_points(df, cols, n_interp=10):
+def _interpolate_points(df, cols, n_interp=10, id_col='id'):
     new_df = pd.DataFrame()
-    coords = df[cols].values
-    for i in range(len(coords) - 1):
-        new_coords = np.array([np.linspace(coords[i, j], coords[i + 1, j], n_interp, endpoint=False)
-                               for j in range(len(coords[i]))]).transpose()
-        cur_df = pd.DataFrame(new_coords, columns=cols)
-        new_df = pd.concat([new_df, cur_df], ignore_index=True)
+    for s in df[id_col].unique():
+        coords = df[df[id_col] == s][cols].values
+        for i in range(len(coords) - 1):
+            new_coords = np.array([np.linspace(coords[i, j], coords[i + 1, j], n_interp, endpoint=False)
+                                   for j in range(len(coords[i]))]).transpose()
+            cur_df = pd.DataFrame(new_coords, columns=cols)
+            cur_df[id_col] = s
+            new_df = pd.concat([new_df, cur_df], ignore_index=True)
     return new_df
+
+
+def _create_mt_image(df, shape, cols, id_col='id'):
+    img = np.zeros(shape)
+    if len(df) > 0:
+        for mt_id in df[id_col].unique():
+            cur_points = df[df[id_col] == mt_id]
+            coords = [np.int_(cur_points[c]) for c in cols]
+            img[tuple(coords)] = mt_id
+    return img
