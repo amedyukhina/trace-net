@@ -40,10 +40,8 @@ def get_valid_transform():
 
 def apply_transform(transforms, target, image):
     ndim = target['boxes'].shape[-1]
-    if ndim != 4:
-        boxes = target['boxes'].reshape(-1, 2)
+    boxes = target['boxes'].reshape(-1, 2)
     key = 'keypoints'
-    boxes = target['boxes']
     sample = {'image': image, 'labels': target['labels'], key: boxes}
     if 'point_labels' in target:
         sample['point_labels'] = target['point_labels']
