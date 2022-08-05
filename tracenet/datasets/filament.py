@@ -4,7 +4,7 @@ import torch
 import torch.utils.data
 from skimage import io
 
-from .transforms import apply_transform, norm_pad_to_gray
+from .transforms import apply_transform, norm_pad_to_gray, get_valid_transform
 from ..utils import normalize_points, points_to_bounding_line
 
 
@@ -14,6 +14,8 @@ class FilamentDetection(torch.utils.data.Dataset):
                  col_id='id', maxsize=None, n_points=10, cols=None):
         self.intensity_transforms = intensity_transforms
         self.spatial_transforms = spatial_transforms
+        if spatial_transforms is None:
+            self.spatial_transforms = get_valid_transform()
         self.ann_files = ann_files
         self.image_files = image_files
         self.col_id = col_id
@@ -60,7 +62,7 @@ class FilamentDetection(torch.utils.data.Dataset):
         target['boxes'] = normalize_points(target['boxes'], image.shape[-2:])
         target['boxes'] = points_to_bounding_line(target['boxes'])
         target['area'] = torch.ones((target['boxes'].shape[0],), dtype=torch.float32)
-        image, labels, mask = image.unbind(-1)
+        image, labels, mask = image
         image = torch.stack([image] * 3)
         if self.intensity_transforms:
             target, image = apply_transform(self.intensity_transforms, target, np.moveaxis(image.numpy(), 0, -1))
