@@ -14,9 +14,9 @@ def collate_fn(batch):
 def get_train_transform(**kwargs):
     return A.Compose([
         A.Flip(p=0.5),
-        A.Rotate(p=1, border_mode=0, value=0, limit=30),
+        A.Rotate(p=1, border_mode=0, value=0, limit=10),
         A.Transpose(p=0.5),
-        A.RandomBrightnessContrast(p=0.5),
+        # A.RandomBrightnessContrast(p=0.5),
         ToTensorV2(p=1.0)
     ], **kwargs)
 
