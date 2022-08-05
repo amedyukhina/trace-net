@@ -29,13 +29,13 @@ def get_train_transform_intensity():
     return A.Compose([
         A.RandomBrightnessContrast(p=0.5),
         ToTensorV2(p=1.0)
-    ], KEYPOINT_PARAMS)
+    ], keypoint_params=KEYPOINT_PARAMS)
 
 
 def get_valid_transform():
     return A.Compose([
         ToTensorV2(p=1.0)
-    ], KEYPOINT_PARAMS)
+    ], keypoint_params=KEYPOINT_PARAMS)
 
 
 def apply_transform(transforms, target, image):
@@ -70,5 +70,5 @@ def norm_pad_to_gray(image, maxsize=None):
         maxsize = np.max(image.shape)
     else:
         maxsize = max(maxsize, np.max(image.shape))
-    image = np.pad(image, [(0, maxsize - image.shape[0]), (0, maxsize - image.shape[1]), (0, 0)])
+    image = np.pad(image, [(0, maxsize - image.shape[0]), (0, maxsize - image.shape[1])])
     return image
