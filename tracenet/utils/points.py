@@ -49,14 +49,14 @@ def points_to_bounding_line(x):
     y_c = (y1 + y2) / 2
     vec = torch.stack([y2 - y1, x2 - x1], dim=-1)
     l = torch.norm(vec, dim=-1)
-    a = (torch.atan(vec[:, 0] / vec[:, 1]) + torch.pi/2) / torch.pi
+    a = (torch.atan(vec[:, 0] / vec[:, 1]) + torch.pi / 2) / torch.pi
     b = [y_c, x_c, l, a]
     return torch.stack(b, dim=-1)
 
 
 def bounding_line_to_points(x):
     y_c, x_c, l, a = x.unbind(-1)
-    a = a * torch.pi - torch.pi/2
+    a = a * torch.pi - torch.pi / 2
     x_d = l / 2 * torch.cos(a)
     y_d = l / 2 * torch.sin(a)
     b = [y_c - y_d, x_c - x_d, y_c + y_d, x_c + x_d]
