@@ -11,9 +11,11 @@ KEYPOINT_PARAMS = A.KeypointParams(format='xy',
 
 
 def collate_fn(batch):
-    imgs, targets = tuple(zip(*batch))
+    imgs, targets, labels, masks = tuple(zip(*batch))
     imgs = torch.stack(imgs)
-    return imgs, targets
+    labels = torch.stack(labels),
+    masks = torch.stack(masks)
+    return imgs, targets, labels, masks
 
 
 def get_train_transform_spatial():
