@@ -96,7 +96,7 @@ if __name__ == '__main__':
                         batch_size=config.batch_size, num_workers=config.batch_size)
 
     # Setup model, loss, and metric
-    model = build_model(n_classes=1, n_points=config.n_points if config.data == 'mt' else 2, pretrained=True)
+    model = build_model(n_classes=1, n_points=config.n_points, pretrained=True)
     loss_function = Criterion(1, HungarianMatcher(), losses=['labels', 'boxes', 'cardinality'])
 
     # train
