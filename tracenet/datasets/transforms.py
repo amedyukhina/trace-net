@@ -4,6 +4,11 @@ import torch
 import torch.utils.data
 from albumentations.pytorch.transforms import ToTensorV2
 
+KEYPOINT_PARAMS = A.KeypointParams(format='xy',
+                                   label_fields=['point_labels'],
+                                   remove_invisible=False,
+                                   angle_in_degrees=True)
+
 
 def collate_fn(batch):
     imgs, targets = tuple(zip(*batch))
@@ -11,26 +16,26 @@ def collate_fn(batch):
     return imgs, targets
 
 
-def get_train_transform_spatial(**kwargs):
+def get_train_transform_spatial():
     return A.Compose([
         A.Flip(p=0.5),
         A.Rotate(p=1, border_mode=0, value=0, limit=10),
         A.Transpose(p=0.5),
         ToTensorV2(p=1.0)
-    ], **kwargs)
+    ], keypoint_params=KEYPOINT_PARAMS)
 
 
-def get_train_transform_intensity(**kwargs):
+def get_train_transform_intensity():
     return A.Compose([
         A.RandomBrightnessContrast(p=0.5),
         ToTensorV2(p=1.0)
-    ], **kwargs)
+    ], KEYPOINT_PARAMS)
 
 
-def get_valid_transform(**kwargs):
+def get_valid_transform():
     return A.Compose([
         ToTensorV2(p=1.0)
-    ], **kwargs)
+    ], KEYPOINT_PARAMS)
 
 
 def apply_transform(transforms, target, image):
