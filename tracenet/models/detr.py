@@ -3,7 +3,7 @@ import torch
 from .blocks import MLP
 
 
-def build_model(n_classes=1, n_points=10, pretrained=True, state_dict_path=None):
+def get_detr(n_classes=1, n_points=10, pretrained=True, state_dict_path=None):
     model = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=pretrained)
     hdim = model.transformer.d_model
     model.class_embed = torch.nn.Linear(hdim, n_classes + 1)
