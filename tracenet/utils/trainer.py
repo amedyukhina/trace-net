@@ -3,10 +3,54 @@ import os
 import numpy as np
 import torch
 import wandb
+from monai.losses import DiceLoss
+from monai.metrics import DiceMetric
 from torch.utils.tensorboard import SummaryWriter
 
+from .loader import get_loaders
+from ..losses import Criterion
+from ..models import get_unet, get_detr, get_csnet
 from ..utils import get_device, save_model
 from ..utils.plot import plot_results
+
+
+class Trainer:
+    def __init__(self, config):
+        self.config = config
+        self.train_dl, self.val_dl = get_loaders(**vars(config))
+
+        if config.model.lower() == 'tracenet':
+            self.net = get_detr(
+                n_classes=config.n_classes,
+                n_points=config.n_points,
+                pretrained=True
+            )
+            self.loss_function = Criterion(config.n_classes)
+            self.metric = None
+        elif config.model.lower() == 'unet':
+            self.net = get_unet(
+                n_channels=config.n_channels,
+                num_res_units=config.num_res_units,
+                spatial_dims=config.spatial_dims,
+                in_channels=1, out_channels=2
+            )
+            self._set_dice_loss_and_metric()
+        elif config.model.lower() == 'csnet':
+            self.net = get_csnet(
+                n_channels=config.n_channels,
+                num_res_units=config.num_res_units,
+                spatial_dims=config.spatial_dims,
+                in_channels=1, out_channels=2
+            )
+            self._set_dice_loss_and_metric()
+        else:
+            raise ValueError(rf"{config.model} is not a valid model; "
+                             " valid models are: 'tracenet', 'unet', 'csnet'")
+        self.device = get_device()
+
+    def _set_dice_loss_and_metric(self):
+        self.loss_function = DiceLoss(to_onehot_y=True, softmax=True)
+        self.metric = DiceMetric(include_background=False, reduction="mean")
 
 
 def __normalize(img):
