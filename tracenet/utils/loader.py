@@ -14,7 +14,7 @@ from tracenet.datasets.transforms import (
 
 def get_loaders(data_dir, img_dir='img', gt_dir='gt', train_dir='train', val_dir='val',
                 train_transforms=None, valid_transform=None,
-                maxsize=None, n_points=2, batch_size=2, **kwargs_to_ignore):
+                maxsize=None, n_points=2, batch_size=2, **_):
     # Get transforms
     if train_transforms is None:
         train_transforms = [get_train_transform_spatial(), get_train_transform_intensity()]
