@@ -32,7 +32,7 @@ class Trainer:
                 n_channels=config.n_channels,
                 num_res_units=config.num_res_units,
                 spatial_dims=config.spatial_dims,
-                in_channels=1, out_channels=2
+                in_channels=3, out_channels=2
             )
             self._set_dice_loss_and_metric()
         elif config.model.lower() == 'csnet':
@@ -40,7 +40,7 @@ class Trainer:
                 n_channels=config.n_channels,
                 num_res_units=config.num_res_units,
                 spatial_dims=config.spatial_dims,
-                in_channels=1, out_channels=2
+                in_channels=3, out_channels=2
             )
             self._set_dice_loss_and_metric()
         else:
