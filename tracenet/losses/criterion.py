@@ -1,3 +1,6 @@
+"""
+Adapted from https://github.com/facebookresearch/detr/blob/8a144f83a287f4d3fece4acdf073f387c5af387d/models/detr.py#L83
+"""
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -5,8 +8,6 @@ from torch import nn
 
 class Criterion(nn.Module):
     """
-    Adapted from https://github.com/facebookresearch/detr/blob/8a144f83a287f4d3fece4acdf073f387c5af387d/models/detr.py#L83
-
     This class computes the loss for DETR.
 
     The process happens in two steps:

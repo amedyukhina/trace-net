@@ -1,3 +1,6 @@
+"""
+Copied from https://github.com/facebookresearch/detr/blob/main/models/detr.py
+"""
 import torch.nn.functional as F
 from torch import nn
 
@@ -5,7 +8,6 @@ from torch import nn
 class MLP(nn.Module):
     """
     Multilayer perceptron.
-    Copied from https://github.com/facebookresearch/detr/blob/main/models/detr.py
     """
 
     def __init__(self, input_dim, hidden_dim, output_dim, num_layers):
