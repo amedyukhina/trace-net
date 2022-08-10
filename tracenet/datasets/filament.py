@@ -5,7 +5,7 @@ import torch.utils.data
 from skimage import io
 
 from .transforms import apply_transform, norm_pad_to_gray, get_valid_transform
-from ..utils import normalize_points, points_to_bounding_line
+from ..utils.points import normalize_points, points_to_bounding_line
 
 
 class FilamentDetection(torch.utils.data.Dataset):
