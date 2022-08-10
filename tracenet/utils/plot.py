@@ -11,10 +11,7 @@ CLASSES = [
 ]
 
 
-def plot_results(img, boxes, prob=None, classes=None, return_image=False, size=6):
-    if classes is None:
-        classes = CLASSES
-
+def plot_traces(img, boxes, return_image=False, size=6):
     boxes = bounding_line_to_points(boxes)
     boxes = denormalize_points(boxes, img.shape[-2:])
 
