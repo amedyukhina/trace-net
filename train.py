@@ -8,13 +8,15 @@ if __name__ == '__main__':
                         help='Directory with the data (training, validation, test)', required=True)
     parser.add_argument('-s', '--maxsize', type=int, default=1024,
                         help='Maximum image size')
+    parser.add_argument('-m', '--model', type=str,
+                        help='Model type ("unet", "csnet", or "tracenet")', required=True)
     parser.add_argument('-n', '--n-points', type=int, default=10,
                         help='Number of points in the trace')
     parser.add_argument('-t', '--train-dir', type=str, default='train',
                         help='Subdirectory within "data-dir" to use for training')
     parser.add_argument('-v', '--val-dir', type=str, default='val',
                         help='Subdirectory within "data-dir" to use for validation')
-    parser.add_argument('-m', '--model-path', type=str,
+    parser.add_argument('-mp', '--model-path', type=str,
                         help='Directory for model checkpoints', default='model')
     parser.add_argument('-e', '--epochs', type=int, default=20,
                         help='Number of training epochs')
