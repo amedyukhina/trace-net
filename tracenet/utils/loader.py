@@ -28,7 +28,7 @@ def get_loaders(data_dir, img_dir='img', gt_dir='gt', train_dir='train', val_dir
     data_dir = Path(data_dir)
     ds = []
     for dset, transform in zip([train_dir, val_dir], transforms):
-        files = os.listdir(data_dir / dset / img_dir)
+        files = [fn for fn in os.listdir(data_dir / dset / img_dir) if fn.endswith('.tif')]
         files.sort()
         ds.append(
             FilamentDetection(
