@@ -92,13 +92,13 @@ class Trainer:
         self.weight_dict = {'loss_ce': 1, 'loss_bbox': self.config.bbox_loss_coef}
 
         # set up logging with tensorboard and wandb
-        self.tbwriter = SummaryWriter(log_dir=os.path.join(self.config.model_path, 'logs')) \
-            if self.config.log_tensorboard else None
         self.log_wandb = True if self.config.wandb_api_key_file is not None and \
                                  os.path.exists(self.config.wandb_api_key_file) else False
         self._init_project()
         self.best_model_name = 'best_model.pth'
         self.last_model_name = 'last_model.pth'
+        self.tbwriter = SummaryWriter(log_dir=os.path.join(self.config.model_path, 'logs')) \
+            if self.config.log_tensorboard else None
 
     def __del__(self):
         if self.log_wandb:
