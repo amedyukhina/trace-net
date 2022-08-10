@@ -1,77 +1,113 @@
+import argparse
+import datetime
+import json
 import os
 
-import numpy as np
 import torch
 import wandb
-import json
-import datetime
 from monai.losses import DiceLoss
 from monai.metrics import DiceMetric
 from torch.utils.tensorboard import SummaryWriter
 
 from .loader import get_loaders
 from ..losses import Criterion
-from ..models import get_unet, get_detr, get_csnet
-from ..utils.plot import plot_results
+from ..models import get_model
+from ..utils.plot import plot_traces
+
+DEFAULT_CONFIG = dict(
+    model='unet',
+    epochs=20,
+    batch_size=2,
+    lr=0.0001,
+    n_classes=1,
+    weight_decay=0.0005,
+    factor=0.1,
+    patience=2,
+    model_path='model',
+    log_wandb=False,
+    log_tensorboard=True,
+    wandb_project='Test',
+    data_dir='data',
+    train_dir='train',
+    val_dir='val',
+    img_dir='img',
+    gt_dir='gt',
+    bbox_loss_coef=5,
+    maxsize=1024,
+    n_points=2,
+    n_channels=(16, 32, 64, 128),
+    num_res_units=2,
+    spatial_dims=2,
+    wandb_api_key_file='path_to_my_wandb_api_key_file'
+)
 
 
 class Trainer:
-    def __init__(self, config):
-        self.config = config
-        self.train_dl, self.val_dl = get_loaders(**vars(config))
+    def __init__(self, **kwargs):
+        config = DEFAULT_CONFIG
+        config.update(kwargs)
+        self.config = argparse.Namespace(**config)
 
-        if config.model.lower() == 'tracenet':
-            self.net = get_detr(
-                n_classes=config.n_classes,
-                n_points=config.n_points,
-                pretrained=True
-            )
-            self.loss_function = Criterion(config.n_classes)
+        # set data loaders and the model
+        self.train_dl, self.val_dl = get_loaders(**config)
+        self.net = get_model(self.config)
+
+        # set loss function, validation metric, and forward pass depending on the model type
+        if self.config.model.lower() == 'tracenet':
+            self.loss_function = Criterion(self.config.n_classes)
             self.metric = None
-            self.forward_loss = self.forward_loss_tracenet
-        elif config.model.lower() in ['unet', 'csnet']:
-            get_model = get_unet if config.model.lower() == 'unet' else get_csnet
-            self.net = get_model(
-                n_channels=config.n_channels,
-                num_res_units=config.num_res_units,
-                spatial_dims=config.spatial_dims,
-                in_channels=3, out_channels=2
-            )
+            self.forward_loss_fn = self.forward_loss_tracenet
+            self.forward_pass_fn = self.forward_pass_tracenet
+            self._postproc_outputs_targets = self._postproc_outputs_targets_tracenet
+        elif self.config.model.lower() in ['unet', 'csnet']:
             self.loss_function = DiceLoss(to_onehot_y=True, softmax=True)
             self.metric = DiceMetric(include_background=False, reduction="mean")
-            self.forward_loss = self.forward_loss_unet
+            self.forward_loss_fn = self.forward_loss_unet
+            self.forward_pass_fn = self.forward_pass_unet
+            self._postproc_outputs_targets = self._postproc_outputs_targets_unet
         else:
-            raise ValueError(rf"{config.model} is not a valid model; "
+            raise ValueError(rf"{self.config.model} is not a valid model; "
                              " valid models are: 'tracenet', 'unet', 'csnet'")
 
+        # send the model and loss to cuda if available
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.net.to(self.device)
         self.loss_function.to(self.device)
 
+        # set optimizer and learning rate scheduler
         self.optimizer = torch.optim.AdamW(
             params=[{"params": [p for p in self.net.parameters()
                                 if p.requires_grad]}],
-            lr=config.lr,
-            weight_decay=config.weight_decay
+            lr=self.config.lr,
+            weight_decay=self.config.weight_decay
         )
         self.lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             self.optimizer,
             mode='min',
-            factor=config.factor,
-            patience=config.patience
+            factor=self.config.factor,
+            patience=self.config.patience
         )
 
-        self.weight_dict = {'loss_ce': 1, 'loss_bbox': config.bbox_loss_coef}
+        # set loss weight coefficients
+        self.weight_dict = {'loss_ce': 1, 'loss_bbox': self.config.bbox_loss_coef}
 
-        self.tbwriter = SummaryWriter(log_dir=os.path.join(config.model_path, 'logs')) \
-            if config.log_tensorboard else None
-
-        self.log_wandb = True if config.api_key_file is not None and os.path.exists(config.api_key_file) else False
+        # set up logging with tensorboard and wandb
+        self.tbwriter = SummaryWriter(log_dir=os.path.join(self.config.model_path, 'logs')) \
+            if self.config.log_tensorboard else None
+        self.log_wandb = True if self.config.wandb_api_key_file is not None and \
+                                 os.path.exists(self.config.wandb_api_key_file) else False
         self._init_project()
+        self.best_model_name = 'best_model.pth'
+        self.last_model_name = 'last_model.pth'
+
+    def __del__(self):
+        if self.log_wandb:
+            wandb.finish()
+        self.save_model()
 
     def _init_project(self):
         if self.log_wandb:
-            with open(self.config.api_key_file) as f:
+            with open(self.config.wandb_api_key_file) as f:
                 key = f.read()
             os.environ['WANDB_API_KEY'] = key
         else:
@@ -85,7 +121,9 @@ class Trainer:
         # Save training parameters
         os.makedirs(self.config.model_path, exist_ok=True)
         with open(os.path.join(self.config.model_path, 'config.json'), 'w') as f:
-            json.dump(vars(self.config), f, indent=4)
+            params = vars(self.config)
+            params['data_dir'] = str(params['data_dir'])
+            json.dump(params, f, indent=4)
 
     def _get_model_name(self):
         if self.log_wandb:
@@ -94,45 +132,78 @@ class Trainer:
             model_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         return model_name
 
-    def log_tb(self, key, value, step):
+    def log_scalar_tb(self, key, value, step):
         if self.tbwriter is not None:
             self.tbwriter.add_scalar(key, value, step)
 
     def train(self):
-        best_metric = 10 ** 10
+        best_loss = 10 ** 10
         for epoch in range(self.config.epochs):
+            # training pass
             train_loss = self.train_epoch()
+
+            # log training losses
             print(f"epoch {epoch + 1} training loss: {train_loss:.4f}")
             wandb.log({'average training loss': train_loss,
                        'epoch': epoch + 1,
                        'lr': self.optimizer.param_groups[0]['lr']})
+            self.log_scalar_tb('average training loss', train_loss, epoch + 1)
+            self.log_scalar_tb('learning rate', self.optimizer.param_groups[0]['lr'], epoch + 1)
 
-            self.log_tb('average training loss', train_loss, epoch + 1)
-            self.log_tb('learning rate', self.optimizer.param_groups[0]['lr'], epoch + 1)
-
+            # validation pass
             val_loss = self.validate_epoch()
+
+            # log validation losses and metrics
             print(f"epoch {epoch + 1} validation loss: {val_loss:.4f}")
             wandb.log({'validation loss': val_loss})
-            self.log_tb('validation loss', val_loss, epoch + 1)
+            self.log_scalar_tb('validation loss', val_loss, epoch + 1)
+            if self.metric is not None:
+                val_metric = self.metric.aggregate().item()
+                self.metric.reset()
+                wandb.log({self.metric.__class__.__name__: val_metric})
+                self.log_scalar_tb(self.metric.__class__.__name__, val_metric, epoch + 1)
 
+            # update learning rate
             self.lr_scheduler.step(val_loss)
 
-    def forward_loss_tracenet(self, batch, step):
+            # save the model state dict
+            self.save_model()  # save last weights (default mode=0)
+            if val_loss < best_loss:
+                best_loss = val_loss
+                self.save_model(mode=1)  # save best weights (mode=1)
+
+            # log images to tensorboard
+            self.log_images(epoch + 1)
+
+    def forward_pass_tracenet(self, batch):
         imgs, targets, _, _, = batch
         targets = [{k: v.to(self.device) for k, v in t.items() if isinstance(v, torch.Tensor)} for t in targets]
         outputs = self.net(imgs.to(self.device))
+        return outputs, targets
+
+    def forward_pass_unet(self, batch):
+        imgs, _, _, masks = batch
+        outputs = self.net(imgs.to(self.device))
+        return outputs, masks.to(self.device)
+
+    def forward_loss_tracenet(self, outputs, targets, step):
         loss_dict = self.loss_function(outputs, targets)
         losses = sum(loss_dict[k] * self.weight_dict[k] for k in loss_dict.keys() if k in self.weight_dict)
         if step is not None:
             wandb.log({k: loss_dict[k] for k in loss_dict.keys()})
             for k in loss_dict.keys():
-                self.log_tb(k, loss_dict[k], step)
+                self.log_scalar_tb(k, loss_dict[k], step)
         return losses
 
-    def forward_loss_unet(self, batch, _):
-        imgs, _, _, masks = batch
-        outputs = self.net(imgs.to(self.device))
-        losses = self.loss_function(outputs, masks)
+    def forward_loss_unet(self, outputs, targets, step):
+        losses = self.loss_function(outputs, targets.unsqueeze(1))
+        if step is None and self.metric is not None:
+            self.metric(outputs.argmax(1).unsqueeze(1), targets.unsqueeze(1))
+        return losses
+
+    def forward_loss(self, batch, step):
+        outputs, targets = self.forward_pass_fn(batch)
+        losses = self.forward_loss_fn(outputs, targets, step)
         return losses
 
     def train_epoch(self):
@@ -149,7 +220,7 @@ class Trainer:
             epoch_loss += losses.item()
 
             wandb.log({'training loss': losses.item()})
-            self.log_tb('training loss', losses.item(), step)
+            self.log_scalar_tb('training loss', losses.item(), step)
         epoch_loss /= step
         return epoch_loss
 
@@ -163,64 +234,33 @@ class Trainer:
                 step += 1
                 losses = self.forward_loss(batch, None)
                 epoch_loss += losses.item()
+
             epoch_loss /= step
         return epoch_loss
 
-
-    def save_model(self, model, model_path, model_name='best_model.pth'):
-        fn_out = os.path.join(model_path, model_name)
-        os.makedirs(model_path, exist_ok=True)
-        torch.save(model.state_dict(), fn_out)
+    def save_model(self, mode=0):
+        name = self.best_model_name if mode else self.last_model_name
+        fn_out = os.path.join(self.config.model_path, name)
+        os.makedirs(self.config.model_path, exist_ok=True)
+        torch.save(self.net.state_dict(), fn_out)
         print(rf"Saved new best model to: {fn_out}")
 
+    def _postproc_outputs_targets_tracenet(self, outputs, targets, imgs):
+        probas = outputs['pred_logits'].softmax(-1)[0, :, :-1]
+        keep = probas.max(-1).values > 0.7
+        output = plot_traces(imgs[0].cpu(), outputs['pred_boxes'][0, keep].cpu(), return_image=True)
+        target = plot_traces(imgs[0].cpu(), targets[0]['boxes'].cpu(), return_image=True)
+        return output, target
 
-def __normalize(img):
-    img = img - np.min(img)
-    return (img * 255. / np.max(img)).astype(np.uint8)
+    def _postproc_outputs_targets_unet(self, outputs, targets, _):
+        return outputs[0].argmax(0).unsqueeze(-1), targets[0].unsqueeze(-1)
 
-
-def __log_images(writer, samples, targets, outputs, iteration):
-    probas = outputs['pred_logits'].softmax(-1)[0, :, :-1]
-    keep = probas.max(-1).values > 0.7
-    writer.add_image('input', __normalize(samples[0].numpy().transpose(1, 2, 0)),
-                     iteration, dataformats='HWC')
-    writer.add_image('output', plot_results(samples[0].cpu(),
-                                            outputs['pred_boxes'][0, keep].cpu(), probas[keep].cpu(),
-                                            return_image=True),
-                     iteration, dataformats='HWC')
-    writer.add_image('target', plot_results(samples[0].cpu(), targets[0]['boxes'].cpu(), return_image=True),
-                     iteration, dataformats='HWC')
-
-
-
-def train(train_dl, val_dl, model, loss_function, config, log_tensorboard=False):
-    for epoch in range(config.epochs):
-
-        model.eval()
-        loss_function.eval()
-        val_loss = 0
-        step = 0
-        with torch.no_grad():
-            for samples, targets in val_dl:
-                step += 1
-                val_losses = __forward_pass(samples, targets, model, device, loss_function, weight_dict)[0]
-                loss_value = val_losses.item()
-                val_loss += loss_value
-
-            val_loss /= step
-
-        print(f"epoch {epoch + 1} validation loss: {val_loss:.4f}")
-        wandb.log({'validation loss': val_loss})
-
-        if log_tensorboard:
-            tbwriter.add_scalar('validation loss', val_loss, epoch + 1)
-            samples, targets = next(iter(val_dl))
+    def log_images(self, iteration):
+        if self.tbwriter is not None:
+            batch = next(iter(self.val_dl))
             with torch.no_grad():
-                outputs = model(samples.to(device))
-            __log_images(tbwriter, samples, targets, outputs, epoch + 1)
-
-        lr_scheduler.step(val_loss)
-
-        if val_loss < best_metric:
-            best_metric = val_loss
-            save_model(model, config.model_path)
+                outputs, targets = self.forward_pass_fn(batch)
+            self.tbwriter.add_image('input', batch[0][0], iteration, dataformats='CHW')
+            output, target = self._postproc_outputs_targets(outputs, targets, batch[0])
+            self.tbwriter.add_image('output', output, iteration, dataformats='HWC')
+            self.tbwriter.add_image('target', target, iteration, dataformats='HWC')
