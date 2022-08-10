@@ -10,7 +10,7 @@ if __name__ == '__main__':
                         help='Maximum image size')
     parser.add_argument('-m', '--model', type=str,
                         help='Model type ("unet", "csnet", or "tracenet")', required=True)
-    parser.add_argument('-n', '--n-points', type=int, default=10,
+    parser.add_argument('-n', '--n-points', type=int, default=2,
                         help='Number of points in the trace')
     parser.add_argument('-t', '--train-dir', type=str, default='train',
                         help='Subdirectory within "data-dir" to use for training')
@@ -37,7 +37,6 @@ if __name__ == '__main__':
                         help='Number of residual units in each block of Unet and CSNet')
     parser.add_argument('-wp', '--wandb-project', type=str, default='',
                         help='wandb project name')
-    parser.add_argument('-lwb', '--log-wandb', action='store_true')
     parser.add_argument('-log', '--log-tensorboard', action='store_true')
     parser.add_argument('-wapi', '--wandb-api-key-file', type=str, default=None,
                         help='Path to the wandb api key file')
