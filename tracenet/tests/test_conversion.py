@@ -16,4 +16,3 @@ def test_conversion(random_imgsize, random_points):
     random_points = random_points.numpy()
     assert (points_back_converted[:, :2] == random_points[:, :2]).all()
     assert (points_back_converted[:, -2:] == random_points[:, -2:]).all()
-
