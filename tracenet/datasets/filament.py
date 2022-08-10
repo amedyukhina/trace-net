@@ -41,7 +41,7 @@ class FilamentDetection(torch.utils.data.Dataset):
             coords = cur_df[self.cols].values.ravel()
             boxes.append(coords)
 
-        boxes = torch.as_tensor(boxes, dtype=torch.float32)
+        boxes = torch.as_tensor(np.array(boxes), dtype=torch.float32)
 
         area = torch.ones((boxes.shape[0],), dtype=torch.float32)
         labels = torch.zeros((boxes.shape[0],), dtype=torch.int64)
