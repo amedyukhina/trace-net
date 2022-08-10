@@ -1,23 +1,10 @@
 import argparse
-import json
-import os
-from pathlib import Path
 
-import albumentations as A
-import wandb
-from torch.utils.data import DataLoader
-
-from tracenet import get_train_transform, get_valid_transform, collate_fn
-from tracenet.datasets import FilamentDetection
-from tracenet.models.criterion import Criterion
-from tracenet.models.detr import build_model
-from tracenet.models.matcher import HungarianMatcher
-from tracenet.utils import get_model_name
-from tracenet.utils.train import train
+from tracenet.utils.trainer import Trainer
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-dd', '--data-dir', type=str,
+    parser.add_argument('-d', '--data-dir', type=str,
                         help='Directory with the data (training, validation, test)', required=True)
     parser.add_argument('-s', '--maxsize', type=int, default=1024,
                         help='Maximum image size')
@@ -42,63 +29,23 @@ if __name__ == '__main__':
                         help='Factor parameter for ReduceOnPlateau learning rate scheduler')
     parser.add_argument('-p', '--patience', type=int, default=10,
                         help='Patience parameter for ReduceOnPlateau learning rate scheduler')
-    parser.add_argument('-pr', '--wandb-project', type=str, default='',
+    parser.add_argument('-c', '--n-channels', type=str, default="16,32,64,128",
+                        help='Number of channels in each UNet layers, separated by ","')
+    parser.add_argument('-r', '--num-res-units', type=int, default=1,
+                        help='Number of residual units in each block of Unet and CSNet')
+    parser.add_argument('-wp', '--wandb-project', type=str, default='',
                         help='wandb project name')
-    parser.add_argument('-log', '--log-progress', action='store_true')
+    parser.add_argument('-lwb', '--log-wandb', action='store_true')
+    parser.add_argument('-log', '--log-tensorboard', action='store_true')
+    parser.add_argument('-wapi', '--wandb-api-key-file', type=str, default=None,
+                        help='Path to the wandb api key file')
 
     config = parser.parse_args()
+    config.n_channels = [int(i) for i in config.n_channels.split(',')]
+    config = vars(config)
 
     print('\nThe following are the parameters that will be used:')
-    print(vars(config))
+    print(config)
     print('\n')
-
-    # Initialize wandb project
-    if config.log_progress:
-        with open('/home/amedyukh/.wandb_api_key') as f:
-            key = f.read()
-        os.environ['WANDB_API_KEY'] = key
-    else:
-        os.environ['WANDB_MODE'] = 'offline'
-
-    wandb.init(project=config.wandb_project, config=vars(config))
-
-    # Update model path
-    config.model_path = os.path.join(config.model_path, get_model_name(config.log_progress))
-
-    # Save training parameters
-    os.makedirs(config.model_path, exist_ok=True)
-    with open(os.path.join(config.model_path, 'config.json'), 'w') as f:
-        json.dump(vars(config), f, indent=4)
-
-    # Setup data loaders
-    path = Path(config.data_dir)
-    ds = []
-    for dset, transform in zip([config.train_dir, config.val_dir],
-                               [get_train_transform, get_valid_transform]):
-        files = os.listdir(path / dset / 'img')
-        files.sort()
-        ds.append(
-            FilamentDetection(
-                [path / dset / 'img' / fn for fn in files],
-                [path / dset / 'gt' / fn.replace('.tif', '.csv') for fn in files],
-                transforms=transform(keypoint_params=A.KeypointParams(format='xy',
-                                                                      label_fields=['point_labels'],
-                                                                      remove_invisible=False,
-                                                                      angle_in_degrees=True)),
-                maxsize=config.maxsize, n_points=config.n_points
-            )
-        )
-    ds_train, ds_val = ds
-
-    dl_train = DataLoader(ds_train, shuffle=True, collate_fn=collate_fn,
-                          batch_size=config.batch_size, num_workers=config.batch_size)
-    dl_val = DataLoader(ds_val, shuffle=False, collate_fn=collate_fn,
-                        batch_size=config.batch_size, num_workers=config.batch_size)
-
-    # Setup model, loss, and metric
-    model = build_model(n_classes=1, n_points=config.n_points, pretrained=True)
-    loss_function = Criterion(1, HungarianMatcher(), losses=['labels', 'boxes', 'cardinality'])
-
-    # train
-    train(dl_train, dl_val, model, loss_function, config=config, log_tensorboard=True)
-    wandb.finish()
+    trainer = Trainer(**config)
+    trainer.train()
