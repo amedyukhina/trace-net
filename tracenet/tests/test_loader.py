@@ -1,6 +1,6 @@
 import torch
 
-from tracenet.utils import get_loaders
+from tracenet.utils.loader import get_loaders
 
 
 def test_loader(example_data_path):

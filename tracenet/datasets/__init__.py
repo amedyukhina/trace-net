@@ -1,1 +1,0 @@
-from .filament import FilamentDetection
