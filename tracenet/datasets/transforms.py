@@ -64,6 +64,11 @@ def norm_pad_to_gray(image, maxsize=None):
     if len(image.shape) > 2:
         image = np.max(image, axis=-1)
     image = image.astype(np.float32)
+    image = pad_to_max(image, maxsize)
+    return image
+
+
+def pad_to_max(image, maxsize=None):
     if maxsize is None:
         maxsize = np.max(image.shape)
     else:

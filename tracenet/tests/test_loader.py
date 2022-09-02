@@ -1,10 +1,19 @@
+import pytest
 import torch
 
+from tracenet.datasets.filament import FilamentSegmentation
 from tracenet.utils.loader import get_loaders
 
 
-def test_loader(example_data_path):
-    train_dl, val_dl = get_loaders(example_data_path, train_dir='', val_dir='', batch_size=1)
+@pytest.fixture(params=[None, FilamentSegmentation])
+def datasets(request, example_data_path, example_segm_data_path):
+    return request.param, example_data_path if request.param is None else example_segm_data_path
+
+
+def test_loader(datasets):
+    dataset, path = datasets
+    train_dl, val_dl = get_loaders(path, train_dir='', val_dir='', batch_size=1,
+                                   dataset=dataset)
     imgs, targets, labels, masks = next(iter(train_dl))
     assert isinstance(imgs, torch.Tensor)
     assert isinstance(labels, torch.Tensor)

@@ -4,7 +4,7 @@ import torch
 import torch.utils.data
 from skimage import io
 
-from .transforms import apply_transform, norm_pad_to_gray, get_valid_transform
+from .transforms import apply_transform, norm_pad_to_gray, pad_to_max, get_valid_transform
 from ..utils.points import normalize_points, points_to_bounding_line
 
 
@@ -42,7 +42,12 @@ class FilamentDetection(torch.utils.data.Dataset):
             boxes.append(coords)
 
         boxes = torch.as_tensor(np.array(boxes), dtype=torch.float32)
+        target = self.set_target(boxes, index)
+        image, target, label, mask = self.apply_transforms(image, target)
 
+        return image, target, label, mask
+
+    def set_target(self, boxes, index):
         area = torch.ones((boxes.shape[0],), dtype=torch.float32)
         labels = torch.zeros((boxes.shape[0],), dtype=torch.int64)
         iscrowd = torch.zeros((boxes.shape[0],), dtype=torch.int64)
@@ -56,7 +61,9 @@ class FilamentDetection(torch.utils.data.Dataset):
             iscrowd=iscrowd,
             point_labels=point_labels
         )
+        return target
 
+    def apply_transforms(self, image, target):
         if self.spatial_transforms:
             target, image = apply_transform(self.spatial_transforms, target, image)
         image, label, mask = image
@@ -66,6 +73,25 @@ class FilamentDetection(torch.utils.data.Dataset):
         target['boxes'] = normalize_points(target['boxes'], image.shape[-2:])
         target['boxes'] = points_to_bounding_line(target['boxes'])
         target['area'] = torch.ones((target['boxes'].shape[0],), dtype=torch.float32)
+        return image, target, label, mask
+
+    def __len__(self) -> int:
+        return len(self.image_files)
+
+
+class FilamentSegmentation(FilamentDetection):
+
+    def __getitem__(self, index: int):
+        image_id = self.image_files[index]
+        ann_id = self.ann_files[index]
+
+        image = norm_pad_to_gray(io.imread(image_id), maxsize=self.maxsize)
+        mask = pad_to_max(io.imread(ann_id), maxsize=self.maxsize)
+        image = np.dstack([image, mask, (mask > 0) * 1])
+
+        boxes = torch.zeros((1, self.n_points * 2), dtype=torch.float32)
+        target = self.set_target(boxes, index)
+        image, target, label, mask = self.apply_transforms(image, target)
         return image, target, label, mask
 
     def __len__(self) -> int:

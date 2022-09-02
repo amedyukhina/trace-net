@@ -4,8 +4,12 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 import torch
+from skimage import io
+
+from tracenet.datasets.filament import generate_labeled_mask
 
 
 @pytest.fixture(scope='module')
@@ -33,6 +37,27 @@ def random_points(random_imgsize):
 def example_data_path():
     cwd = os.path.dirname(os.path.abspath(__file__))
     return Path(os.path.abspath(os.path.join(cwd, '../../example_data')))
+
+
+@pytest.fixture(scope='module')
+def example_segm_data_path(example_data_path):
+    path = tempfile.mkdtemp()
+    path_gt = os.path.join(path, 'gt')
+    path_img = os.path.join(path, 'img')
+    os.makedirs(path_img, exist_ok=True)
+    os.makedirs(path_gt, exist_ok=True)
+
+    fn = os.listdir(os.path.join(example_data_path, 'gt'))[0]
+    df = pd.read_csv(os.path.join(example_data_path, 'gt', fn))
+
+    fn = os.listdir(os.path.join(example_data_path, 'img'))[0]
+    img = io.imread(os.path.join(example_data_path, 'img', fn))
+
+    mask = generate_labeled_mask(df, img.shape, ['y', 'x'], n_interp=30, id_col='id')
+    io.imsave(os.path.join(path_img, fn), img)
+    io.imsave(os.path.join(path_gt, fn), mask.astype(np.uint8))
+    yield path
+    shutil.rmtree(path)
 
 
 @pytest.fixture(scope='module')

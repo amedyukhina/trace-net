@@ -13,7 +13,7 @@ from tracenet.datasets.transforms import (
 
 
 def get_loaders(data_dir, img_dir='img', gt_dir='gt', train_dir='train', val_dir='val',
-                train_transforms=None, valid_transform=None,
+                train_transforms=None, valid_transform=None, dataset=None,
                 maxsize=None, n_points=2, batch_size=2, **_):
     # Get transforms
     if train_transforms is None:
@@ -23,6 +23,11 @@ def get_loaders(data_dir, img_dir='img', gt_dir='gt', train_dir='train', val_dir
     transforms = [dict(spatial_transforms=train_transforms[0],
                        intensity_transforms=train_transforms[1]),
                   dict(spatial_transforms=valid_transform)]
+    if dataset is None:
+        dataset = FilamentDetection
+        ext = '.csv'
+    else:
+        ext = '.tif'
 
     # Get datasets
     data_dir = Path(data_dir)
@@ -31,9 +36,9 @@ def get_loaders(data_dir, img_dir='img', gt_dir='gt', train_dir='train', val_dir
         files = [fn for fn in os.listdir(data_dir / dset / img_dir) if fn.endswith('.tif')]
         files.sort()
         ds.append(
-            FilamentDetection(
+            dataset(
                 [data_dir / dset / img_dir / fn for fn in files],
-                [data_dir / dset / gt_dir / fn.replace('.tif', '.csv') for fn in files],
+                [data_dir / dset / gt_dir / fn.replace('.tif', ext) for fn in files],
                 maxsize=maxsize, n_points=n_points,
                 **transform
             )
