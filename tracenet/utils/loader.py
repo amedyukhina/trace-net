@@ -3,7 +3,7 @@ from pathlib import Path
 
 from torch.utils.data import DataLoader
 
-from tracenet.datasets import FilamentDetection
+from tracenet.datasets.filament import FilamentDetection
 from tracenet.datasets.transforms import (
     get_train_transform_intensity,
     get_train_transform_spatial,

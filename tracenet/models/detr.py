@@ -1,6 +1,6 @@
 import torch
 
-from .blocks import MLP
+from .blocks.mlp import MLP
 
 
 def get_detr(n_classes=1, n_points=10, pretrained=True, state_dict_path=None):

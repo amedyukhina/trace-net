@@ -2,7 +2,7 @@ import torch.nn as nn
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
-from .blocks import AffinityAttention
+from .blocks.cs_attention import AffinityAttention
 
 
 class CSNet(UNet):

@@ -10,7 +10,7 @@ from monai.metrics import DiceMetric
 from torch.utils.tensorboard import SummaryWriter
 
 from .loader import get_loaders
-from ..losses import Criterion
+from ..losses.criterion import Criterion
 from ..models import get_model
 from ..utils.plot import plot_traces
 
