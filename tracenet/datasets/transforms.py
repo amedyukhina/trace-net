@@ -4,10 +4,9 @@ import torch
 import torch.utils.data
 from albumentations.pytorch.transforms import ToTensorV2
 
-KEYPOINT_PARAMS = A.KeypointParams(format='xy',
+KEYPOINT_PARAMS = A.KeypointParams(format='yx',
                                    label_fields=['point_labels'],
-                                   remove_invisible=False,
-                                   angle_in_degrees=True)
+                                   remove_invisible=True)
 
 
 def collate_fn(batch):
@@ -18,17 +17,11 @@ def collate_fn(batch):
     return imgs, targets, labels, masks
 
 
-def get_train_transform_spatial():
+def get_train_transform():
     return A.Compose([
         A.Flip(p=0.5),
         A.Rotate(p=1, border_mode=0, value=0, limit=10),
         A.Transpose(p=0.5),
-        ToTensorV2(p=1.0)
-    ], keypoint_params=KEYPOINT_PARAMS)
-
-
-def get_train_transform_intensity():
-    return A.Compose([
         A.RandomBrightnessContrast(p=0.5),
         ToTensorV2(p=1.0)
     ], keypoint_params=KEYPOINT_PARAMS)
@@ -41,21 +34,16 @@ def get_valid_transform():
 
 
 def apply_transform(transforms, target, image):
-    ndim = target['boxes'].shape[-1]
-    boxes = target['boxes'].reshape(-1, 2)
-    key = 'keypoints'
-    sample = {'image': image, 'labels': target['labels'], key: boxes}
-    if 'point_labels' in target:
-        sample['point_labels'] = target['point_labels']
+    sample = {'image': image,
+              'point_labels': target['point_labels'],
+              'keypoints': target['keypoints']}
     sample2 = transforms(**sample)
-    while len(sample2[key]) == 0:
+    while len(sample2['keypoints']) == 0:
         sample2 = transforms(**sample)
 
     image = sample2['image'].float()
-    target['boxes'] = torch.tensor(np.array(sample2[key])).float().reshape(-1, ndim)
-    for col in ['labels', 'iscrowd']:
-        if col in target:
-            target[col] = torch.zeros((target['boxes'].shape[0],), dtype=torch.int64)
+    target['keypoints'] = np.array(sample2['keypoints'])
+    target['point_labels'] = sample2['point_labels']
     return target, image
 
 

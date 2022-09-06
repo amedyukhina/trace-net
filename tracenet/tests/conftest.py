@@ -9,7 +9,7 @@ import pytest
 import torch
 from skimage import io
 
-from tracenet.datasets.filament import generate_labeled_mask
+from tracenet.datasets.filament import generate_labeled_mask, df_to_points
 
 
 @pytest.fixture(scope='module')
@@ -53,7 +53,8 @@ def example_segm_data_path(example_data_path):
     fn = os.listdir(os.path.join(example_data_path, 'img'))[0]
     img = io.imread(os.path.join(example_data_path, 'img', fn))
 
-    mask = generate_labeled_mask(df, img.shape, ['y', 'x'], n_interp=30, id_col='id')
+    points, labels = df_to_points(df, ['y', 'x'], col_id='id')
+    mask = generate_labeled_mask(points, labels, img.shape, n_interp=30)
     io.imsave(os.path.join(path_img, fn), img)
     io.imsave(os.path.join(path_gt, fn), mask.astype(np.uint8))
     yield path

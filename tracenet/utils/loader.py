@@ -5,24 +5,21 @@ from torch.utils.data import DataLoader
 
 from tracenet.datasets.filament import FilamentDetection
 from tracenet.datasets.transforms import (
-    get_train_transform_intensity,
-    get_train_transform_spatial,
+    get_train_transform,
     get_valid_transform,
     collate_fn
 )
 
 
 def get_loaders(data_dir, img_dir='img', gt_dir='gt', train_dir='train', val_dir='val',
-                train_transforms=None, valid_transform=None, dataset=None,
+                train_transform=None, valid_transform=None, dataset=None,
                 maxsize=None, n_points=2, batch_size=2, **_):
     # Get transforms
-    if train_transforms is None:
-        train_transforms = [get_train_transform_spatial(), get_train_transform_intensity()]
+    if train_transform is None:
+        train_transform = get_train_transform()
     if valid_transform is None:
         valid_transform = get_valid_transform()
-    transforms = [dict(spatial_transforms=train_transforms[0],
-                       intensity_transforms=train_transforms[1]),
-                  dict(spatial_transforms=valid_transform)]
+    transforms = [train_transform, valid_transform]
     if dataset is None:
         dataset = FilamentDetection
         ext = '.csv'
@@ -40,7 +37,7 @@ def get_loaders(data_dir, img_dir='img', gt_dir='gt', train_dir='train', val_dir
                 [data_dir / dset / img_dir / fn for fn in files],
                 [data_dir / dset / gt_dir / fn.replace('.tif', ext) for fn in files],
                 maxsize=maxsize, n_points=n_points,
-                **transform
+                transforms=transform
             )
         )
     ds_train, ds_val = ds
