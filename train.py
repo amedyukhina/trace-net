@@ -1,5 +1,6 @@
 import argparse
 
+from tracenet.datasets.filament import FilamentSegmentation
 from tracenet.utils.trainer import Trainer
 
 if __name__ == '__main__':
@@ -38,11 +39,15 @@ if __name__ == '__main__':
     parser.add_argument('-wp', '--wandb-project', type=str, default='',
                         help='wandb project name')
     parser.add_argument('-log', '--log-tensorboard', action='store_true')
+    parser.add_argument('-dsegm', '--dsegm', action='store_true',
+                        help='If True, use the segmentation data loader')
     parser.add_argument('-wapi', '--wandb-api-key-file', type=str, default=None,
                         help='Path to the wandb api key file')
 
     config = parser.parse_args()
     config.n_channels = [int(i) for i in config.n_channels.split(',')]
+    if config.dsegm:
+        config.dataset = FilamentSegmentation
     config = vars(config)
 
     print('\nThe following are the parameters that will be used:')
