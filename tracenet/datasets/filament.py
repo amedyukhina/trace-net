@@ -3,8 +3,11 @@ import pandas as pd
 import torch
 import torch.utils.data
 from skimage import io
+from PIL import Image
+from torchvision.transforms import ToTensor
 
 from .transforms import apply_transform, norm_to_gray, pad_to_max, get_valid_transform
+from .transforms_segm import get_valid_transform_segm
 from ..utils.points import normalize_points, points_to_bounding_line, get_first_and_last_points
 
 
@@ -56,10 +59,10 @@ class FilamentDetection(torch.utils.data.Dataset):
 
 
 class FilamentSegmentation(torch.utils.data.Dataset):
-    def __init__(self, image_files, ann_files, transforms=None, patch_size=None, **_):
+    def __init__(self, image_files, ann_files, transforms=None, patch_size=64, **_):
         self.transforms = transforms
         if transforms is None:
-            self.transforms = get_valid_transform()
+            self.transforms = get_valid_transform_segm()
         self.ann_files = ann_files
         self.image_files = image_files
         self.patch_size = patch_size
@@ -69,11 +72,14 @@ class FilamentSegmentation(torch.utils.data.Dataset):
         ann_id = self.ann_files[index]
 
         image = norm_to_gray(io.imread(image_id))
-        image = np.dstack([image] * 3)
-        mask = io.imread(ann_id)
+        image = ToTensor()(np.dstack([image] * 3))
+        mask = torch.tensor(io.imread(ann_id), dtype=torch.int64)
 
-        image = torch.tensor(np.moveaxis(image, -1, 0), dtype=torch.float)
-        mask = torch.tensor(mask, dtype=torch.int64)
+        seed = np.random.randint(np.iinfo('int32').max)
+        torch.manual_seed(seed)
+
+        image = self.transforms(image)
+        mask = self.transforms(mask)
 
         return image, dict(), mask, (mask > 0) * 1
 
