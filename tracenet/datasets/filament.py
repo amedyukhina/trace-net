@@ -37,12 +37,13 @@ class FilamentDetection(torch.utils.data.Dataset):
 
         if self.transforms:
             target, image = apply_transform(self.transforms, target, image)
+        print(len(target['keypoints']), len(target['point_labels']))
 
         mask = torch.tensor(generate_labeled_mask(target['keypoints'],
                                                   target['point_labels'],
                                                   image.shape[-2:], n_interp=30),
                             dtype=torch.int64)
-
+        #
         # target['boxes'] = points_to_bounding_line(normalize_points(target['keypoints'],
         #                                                            image.shape[-2:]))
 
@@ -134,8 +135,8 @@ def _interpolate_points(points, labels, n_interp=10):
         else:
             coords_interp = coords
         new_points.append(coords_interp),
-        new_labels.append([lb]*len(coords_interp))
-    return np.concatenate(new_points, axis=0), np.ravel(new_labels)
+        new_labels = new_labels + [lb]*len(coords_interp)
+    return np.concatenate(new_points, axis=0), np.array(new_labels)
 
 
 def _create_mt_image(points, labels, shape):
