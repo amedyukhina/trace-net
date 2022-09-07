@@ -4,7 +4,7 @@ import torch
 import torch.utils.data
 from skimage import io
 
-from .transforms import apply_transform, norm_pad_to_gray, pad_to_max, get_valid_transform
+from .transforms import apply_transform, norm_to_gray, pad_to_max, get_valid_transform
 from ..utils.points import normalize_points, points_to_bounding_line, get_first_and_last_points
 
 
@@ -25,7 +25,7 @@ class FilamentDetection(torch.utils.data.Dataset):
         image_id = self.image_files[index]
         ann_id = self.ann_files[index]
 
-        image = norm_pad_to_gray(io.imread(image_id), maxsize=self.maxsize)
+        image = pad_to_max(norm_to_gray(io.imread(image_id)), maxsize=self.maxsize)
         image = np.dstack([image] * 3)
 
         points, labels = df_to_points(pd.read_csv(ann_id), self.cols, self.col_id)
@@ -37,7 +37,6 @@ class FilamentDetection(torch.utils.data.Dataset):
 
         if self.transforms:
             target, image = apply_transform(self.transforms, target, image)
-        print(len(target['keypoints']), len(target['point_labels']))
 
         mask = torch.tensor(generate_labeled_mask(target['keypoints'].numpy(),
                                                   target['point_labels'].numpy(),
@@ -56,20 +55,27 @@ class FilamentDetection(torch.utils.data.Dataset):
         return len(self.image_files)
 
 
-class FilamentSegmentation(FilamentDetection):
+class FilamentSegmentation(torch.utils.data.Dataset):
+    def __init__(self, image_files, ann_files, transforms=None, patch_size=None, **_):
+        self.transforms = transforms
+        if transforms is None:
+            self.transforms = get_valid_transform()
+        self.ann_files = ann_files
+        self.image_files = image_files
+        self.patch_size = patch_size
 
     def __getitem__(self, index: int):
         image_id = self.image_files[index]
         ann_id = self.ann_files[index]
 
-        image = norm_pad_to_gray(io.imread(image_id), maxsize=self.maxsize)
-        mask = pad_to_max(io.imread(ann_id), maxsize=self.maxsize)
-        image = np.dstack([image, mask, (mask > 0) * 1])
+        image = norm_to_gray(io.imread(image_id))
+        image = np.dstack([image] * 3)
+        mask = io.imread(ann_id)
 
-        boxes = torch.zeros((1, self.n_points * 2), dtype=torch.float32)
-        target = self.set_target(boxes, index)
-        image, target, label, mask = self.apply_transforms(image, target)
-        return image, target, label, mask
+        image = torch.tensor(np.moveaxis(image, -1, 0), dtype=torch.float)
+        mask = torch.tensor(mask, dtype=torch.int64)
+
+        return image, dict(), mask, (mask > 0)*1
 
     def __len__(self) -> int:
         return len(self.image_files)

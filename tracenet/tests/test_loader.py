@@ -6,25 +6,15 @@ from tracenet.utils.loader import get_loaders
 
 
 @pytest.fixture(params=[
-    None,
-    # FilamentSegmentation
-])
-def datasets(request, example_data_path, example_segm_data_path):
-    return request.param, example_data_path if request.param is None else example_segm_data_path
-
-
-@pytest.fixture(params=[
     0,
     1
 ])
-def loader(request, datasets):
-    dataset, path = datasets
-    loaders = get_loaders(path, train_dir='', val_dir='', batch_size=1, dataset=dataset)
-    return loaders[request.param], path
+def dl_index(request):
+    return request.param
 
 
-def test_loader(loader):
-    loader, path = loader
+def test_loader(example_data_path, dl_index):
+    loader = get_loaders(example_data_path, train_dir='', val_dir='', batch_size=1)[dl_index]
     imgs, targets, labels, masks = next(iter(loader))
     assert isinstance(imgs, torch.Tensor)
     assert isinstance(labels, torch.Tensor)
@@ -36,3 +26,15 @@ def test_loader(loader):
     assert isinstance(targets[0]['boxes'], torch.Tensor)
     assert imgs.shape[-2:] == labels.shape[-2:] == masks.shape[-2:]
     assert len(targets[0]['boxes'].shape) == 2
+
+
+def test_loader_segm(example_segm_data_path, dl_index):
+    loader = get_loaders(example_segm_data_path, train_dir='', val_dir='', batch_size=1,
+                         dataset=FilamentSegmentation)[dl_index]
+    imgs, _, labels, masks = next(iter(loader))
+    assert isinstance(imgs, torch.Tensor)
+    assert isinstance(labels, torch.Tensor)
+    assert isinstance(masks, torch.Tensor)
+    assert imgs.shape[0] == labels.shape[0] == masks.shape[0]
+    assert len(imgs.shape) == len(labels.shape) + 1 == len(masks.shape) + 1
+    assert imgs.shape[-2:] == labels.shape[-2:] == masks.shape[-2:]

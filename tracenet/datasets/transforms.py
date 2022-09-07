@@ -47,12 +47,11 @@ def apply_transform(transforms, target, image):
     return target, image
 
 
-def norm_pad_to_gray(image, maxsize=None):
+def norm_to_gray(image):
     image = image / np.max(image)
     if len(image.shape) > 2:
         image = np.max(image, axis=-1)
     image = image.astype(np.float32)
-    image = pad_to_max(image, maxsize)
     return image
 
 
