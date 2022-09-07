@@ -1,6 +1,7 @@
 from .csnet import get_csnet
 from .detr import get_detr
 from .unet import get_unet
+from .spoco_unet import get_spoco_unet
 
 
 def get_model(config):
@@ -24,8 +25,13 @@ def get_model(config):
             spatial_dims=config.spatial_dims,
             in_channels=3, out_channels=2
         )
+    elif config.model.lower() == 'spoco_unet':
+        net = get_spoco_unet(
+            n_channels=config.n_channels,
+            in_channels=3, out_channels=2
+        )
     else:
         raise ValueError(rf"{config.model} is not a valid model; "
-                         " valid models are: 'tracenet', 'unet', 'csnet'")
+                         " valid models are: 'tracenet', 'unet', 'csnet', 'spoco_unet'")
 
     return net
