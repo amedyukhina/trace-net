@@ -18,5 +18,5 @@ def get_valid_transform_segm(patch_size=64):
 
 def get_intensity_transform():
     return transforms.Compose([
-        transforms.ColorJitter(brightness=0.2, contrast=0.2)
+        transforms.ColorJitter(brightness=0.2, contrast=0.1)
     ])
