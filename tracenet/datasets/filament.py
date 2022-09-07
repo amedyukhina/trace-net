@@ -49,7 +49,7 @@ class FilamentDetection(torch.utils.data.Dataset):
             )
         )
         target['labels'] = torch.zeros((target['boxes'].shape[0],), dtype=torch.int64)
-        return image, target, mask, (mask > 0)*1
+        return image, target, mask, (mask > 0) * 1
 
     def __len__(self) -> int:
         return len(self.image_files)
@@ -75,7 +75,7 @@ class FilamentSegmentation(torch.utils.data.Dataset):
         image = torch.tensor(np.moveaxis(image, -1, 0), dtype=torch.float)
         mask = torch.tensor(mask, dtype=torch.int64)
 
-        return image, dict(), mask, (mask > 0)*1
+        return image, dict(), mask, (mask > 0) * 1
 
     def __len__(self) -> int:
         return len(self.image_files)
@@ -117,7 +117,7 @@ def df_to_points(df, cols, col_id):
         cur_df = df[df[col_id] == s].reset_index(drop=True)
         coords = cur_df[cols].values
         points.append(coords)
-        labels.append([s+1]*len(coords))
+        labels.append([s + 1] * len(coords))
 
     return np.concatenate(points, axis=0), np.ravel(labels)
 
@@ -139,12 +139,12 @@ def _interpolate_points(points, labels, n_interp=10):
         ind = np.where(labels == lb)
         coords = points[ind]
         if len(coords) > 1:
-            coords_interp = np.concatenate([np.linspace(coords[i], coords[i+1], n_interp, endpoint=False)
-                                            for i in range(len(coords)-1)], axis=0)
+            coords_interp = np.concatenate([np.linspace(coords[i], coords[i + 1], n_interp, endpoint=False)
+                                            for i in range(len(coords) - 1)], axis=0)
         else:
             coords_interp = coords
         new_points.append(coords_interp),
-        new_labels = new_labels + [lb]*len(coords_interp)
+        new_labels = new_labels + [lb] * len(coords_interp)
     return np.concatenate(new_points, axis=0), np.array(new_labels)
 
 

@@ -1,7 +1,6 @@
 import os
 
 from tracenet.utils.trainer import Trainer
-from tracenet.utils.loader import get_loaders
 
 
 def test_trainer(example_data_path, model_path, model_type):

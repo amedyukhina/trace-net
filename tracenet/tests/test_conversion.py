@@ -23,13 +23,13 @@ def test_conversion(random_imgsize, random_points):
             normalize_points(points, random_imgsize),
             labels
         )
-        )
+    )
     assert len(points_converted.shape) == 2
     assert points_converted.shape[-1] == 4
     points_back_converted = denormalize_points(bounding_line_to_points(points_converted), random_imgsize)
     points_back_converted = np.round_(points_back_converted.numpy())
     points = get_first_and_last_points(points, labels)
-    assert len(points) == 2*len(labels.unique())
+    assert len(points) == 2 * len(labels.unique())
     points = points.numpy()
     assert (points_back_converted == points).all()
     assert (points_back_converted == points).all()
