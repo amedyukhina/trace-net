@@ -25,7 +25,7 @@ def plot_traces(img, boxes, return_image=False, size=6):
     ax = plt.gca()
     colors = COLORS * 100
     for i in range(len(boxes)):
-        box = boxes[i].reshape(-1, 2)
+        box = np.fliplr(boxes[i].reshape(-1, 2))
         ax.add_patch(plt.Polygon(box, fill=False, color=colors[i], linewidth=3, closed=False))
     plt.axis('off')
     plt.tight_layout()
