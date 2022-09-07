@@ -123,6 +123,8 @@ class Trainer:
         with open(os.path.join(self.config.model_path, 'config.json'), 'w') as f:
             params = vars(self.config)
             params['data_dir'] = str(params['data_dir'])
+            if 'dataset' in params:
+                params['dataset'] = str(params['dataset'])
             json.dump(params, f, indent=4)
 
     def _get_model_name(self):

@@ -3,7 +3,6 @@ import pandas as pd
 import torch
 import torch.utils.data
 from skimage import io
-from PIL import Image
 from torchvision.transforms import ToTensor
 
 from .transforms import apply_transform, norm_to_gray, pad_to_max, get_valid_transform
@@ -59,13 +58,12 @@ class FilamentDetection(torch.utils.data.Dataset):
 
 
 class FilamentSegmentation(torch.utils.data.Dataset):
-    def __init__(self, image_files, ann_files, transforms=None, patch_size=64, **_):
+    def __init__(self, image_files, ann_files, transforms=None, **_):
         self.transforms = transforms
         if transforms is None:
             self.transforms = get_valid_transform_segm()
         self.ann_files = ann_files
         self.image_files = image_files
-        self.patch_size = patch_size
 
     def __getitem__(self, index: int):
         image_id = self.image_files[index]

@@ -72,6 +72,11 @@ def model_type(request):
     return request.param
 
 
+@pytest.fixture(scope='module', params=['unet', 'csnet'])
+def model_type_segm(request):
+    return request.param
+
+
 @pytest.fixture(scope='module', params=np.random.randint(0, 100, 10))
 def random_coord(random_imgsize):
     return torch.as_tensor(np.array([np.random.randint(0, s, 2)
