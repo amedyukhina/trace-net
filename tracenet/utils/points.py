@@ -16,17 +16,11 @@ def cxcywh_to_xyxy(x):
 
 
 def normalize_points(x, size):
-    ndim = x.shape[-1]
-    x = x.reshape(-1, 2)
-    x = x / torch.tensor(size)
-    return x.reshape(-1, ndim)
+    return x / torch.tensor(size)
 
 
 def denormalize_points(x, size):
-    ndim = x.shape[-1]
-    x = x.reshape(-1, 2)
-    x = x * torch.tensor(size)
-    return x.reshape(-1, ndim).to(float)
+    return x * torch.tensor(size)
 
 
 def coord_to_al(x1, y1, x2, y2):
@@ -44,7 +38,7 @@ def al_to_coord(x1, y1, a, l):
 
 
 def points_to_bounding_line(x):
-    points = x.unbind(-1)
+    points = x.reshape(-1, 4).unbind(-1)
     y1, x1 = points[:2]
     y2, x2 = points[-2:]
     x_c = (x1 + x2) / 2
@@ -63,4 +57,13 @@ def bounding_line_to_points(x):
     x_d = l / 2 * torch.cos(a)
     y_d = l / 2 * torch.sin(a)
     b = [y_c - y_d, x_c - x_d, y_c + y_d, x_c + x_d]
-    return torch.stack(b, dim=-1)
+    return torch.stack(b, dim=-1).reshape(-1, 2)
+
+
+def get_first_and_last_points(points, labels):
+    npoints = []
+    for lb in labels.unique():
+        point = points[labels == lb]
+        npoints.append(point[0])
+        npoints.append(point[-1])
+    return torch.stack(npoints)

@@ -18,19 +18,17 @@ def random_imgsize():
 
 
 @pytest.fixture(scope='module')
-def random_bboxes(random_imgsize):
-    n = np.random.randint(5, 20)
-    boxes = np.array([np.random.randint(0, s - 5, n) for s in random_imgsize])
-    boxes2 = np.array([np.random.randint(b, s)
-                       for i, s in enumerate(random_imgsize) for b in boxes[i]]).reshape(2, -1)
-    return torch.as_tensor(np.concatenate([boxes, boxes2], axis=0).transpose())
-
-
-@pytest.fixture(scope='module')
 def random_points(random_imgsize):
     n = np.random.randint(5, 20)
     size = list(random_imgsize) * np.random.randint(5, 20)
-    return torch.as_tensor(np.array([np.random.randint(0, s, n) for s in size]).transpose()).to(float)
+    points = torch.as_tensor(np.array([np.random.randint(0, s, n) for s in size]).transpose()).to(float)
+    npoints = []
+    labels = []
+    for i, point in enumerate(points):
+        point = point.reshape(-1, 2)
+        npoints.append(point)
+        labels = labels + [i + 1] * len(point)
+    return torch.concat(npoints), torch.tensor(labels)
 
 
 @pytest.fixture(scope='module')

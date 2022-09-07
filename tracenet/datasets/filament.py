@@ -5,7 +5,7 @@ import torch.utils.data
 from skimage import io
 
 from .transforms import apply_transform, norm_pad_to_gray, pad_to_max, get_valid_transform
-from ..utils.points import normalize_points, points_to_bounding_line
+from ..utils.points import normalize_points, points_to_bounding_line, get_first_and_last_points
 
 
 class FilamentDetection(torch.utils.data.Dataset):
@@ -32,21 +32,24 @@ class FilamentDetection(torch.utils.data.Dataset):
         target = dict(
             keypoints=points,
             image_id=torch.tensor([index]),
-            point_labels=labels
+            point_labels=labels,
         )
 
         if self.transforms:
             target, image = apply_transform(self.transforms, target, image)
         print(len(target['keypoints']), len(target['point_labels']))
 
-        mask = torch.tensor(generate_labeled_mask(target['keypoints'],
-                                                  target['point_labels'],
+        mask = torch.tensor(generate_labeled_mask(target['keypoints'].numpy(),
+                                                  target['point_labels'].numpy(),
                                                   image.shape[-2:], n_interp=30),
                             dtype=torch.int64)
-        #
-        # target['boxes'] = points_to_bounding_line(normalize_points(target['keypoints'],
-        #                                                            image.shape[-2:]))
-
+        target['boxes'] = points_to_bounding_line(
+            get_first_and_last_points(
+                normalize_points(target['keypoints'], image.shape[-2:]),
+                target['point_labels']
+            )
+        )
+        target['labels'] = torch.zeros((target['boxes'].shape[0],), dtype=torch.int64)
         return image, target, mask, (mask > 0)*1
 
     def __len__(self) -> int:

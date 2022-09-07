@@ -42,8 +42,8 @@ def apply_transform(transforms, target, image):
         sample2 = transforms(**sample)
 
     image = sample2['image'].float()
-    target['keypoints'] = np.array(sample2['keypoints'])
-    target['point_labels'] = sample2['point_labels']
+    target['keypoints'] = torch.tensor(np.array(sample2['keypoints']), dtype=torch.float)
+    target['point_labels'] = torch.tensor(sample2['point_labels'], dtype=torch.int64)
     return target, image
 
 

@@ -32,7 +32,7 @@ def test_loader(loader):
     assert isinstance(targets, tuple)
     assert imgs.shape[0] == labels.shape[0] == masks.shape[0] == len(targets)
     assert len(imgs.shape) == len(labels.shape) + 1 == len(masks.shape) + 1
-    # assert 'boxes' in targets[0].keys()
-    # assert isinstance(targets[0]['boxes'], torch.Tensor)
-    # assert imgs.shape[-2:] == labels.shape[-2:] == masks.shape[-2:]
-    # assert len(targets[0]['boxes'].shape) == 2
+    assert 'boxes' in targets[0].keys()
+    assert isinstance(targets[0]['boxes'], torch.Tensor)
+    assert imgs.shape[-2:] == labels.shape[-2:] == masks.shape[-2:]
+    assert len(targets[0]['boxes'].shape) == 2
