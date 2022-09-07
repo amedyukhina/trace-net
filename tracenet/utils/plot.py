@@ -1,6 +1,7 @@
 import numpy as np
 import pylab as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from skimage import io
 
 from tracenet.utils.points import denormalize_points, bounding_line_to_points
 
@@ -37,3 +38,10 @@ def plot_traces(img, boxes, return_image=False, size=6):
         return np.frombuffer(canvas.tostring_rgb(),
                              dtype='uint8').reshape(fig.canvas.get_width_height()[::-1] + (3,))
     plt.show()
+
+
+def show_imgs(imgs, s=4):
+    fig, ax = plt.subplots(1, len(imgs), figsize=(len(imgs) * s, s))
+    for i, img in enumerate(imgs):
+        plt.sca(ax[i])
+        io.imshow(img.numpy())
