@@ -68,7 +68,7 @@ class Trainer:
             self.forward_loss_fn = self.forward_loss_tracenet
             self.forward_pass_fn = self.forward_pass_tracenet
             self._postproc_outputs_targets = self._postproc_outputs_targets_tracenet
-        elif self.config.model.lower() in ['unet', 'csnet']:
+        elif self.config.model.lower() in ['unet', 'csnet', 'spoco_unet']:
             self.loss_function = DiceLoss(to_onehot_y=True, softmax=True)
             self.metric = DiceMetric(include_background=False, reduction="mean")
             self.forward_loss_fn = self.forward_loss_unet
@@ -76,7 +76,7 @@ class Trainer:
             self._postproc_outputs_targets = self._postproc_outputs_targets_unet
         else:
             raise ValueError(rf"{self.config.model} is not a valid model; "
-                             " valid models are: 'tracenet', 'unet', 'csnet'")
+                             " valid models are: 'tracenet', 'unet', 'csnet', 'spoco_unet'")
 
         # send the model and loss to cuda if available
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
