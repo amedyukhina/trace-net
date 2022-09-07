@@ -29,6 +29,7 @@ def test_loader(example_data_path, dl_index):
     assert isinstance(targets, tuple)
     assert imgs.shape[0] == labels.shape[0] == masks.shape[0] == len(targets)
     assert imgs.max() <= 1
+    assert imgs.min() >= 0
     assert len(imgs.shape) == len(labels.shape) + 1 == len(masks.shape) + 1
     assert 'boxes' in targets[0].keys()
     assert isinstance(targets[0]['boxes'], torch.Tensor)
@@ -47,5 +48,6 @@ def test_loader_segm(example_segm_data_path, dl_index, random_size):
     assert isinstance(masks, torch.Tensor)
     assert imgs.shape[0] == labels.shape[0] == masks.shape[0]
     assert imgs.max() <= 1
+    assert imgs.min() >= 0
     assert len(imgs.shape) == len(labels.shape) + 1 == len(masks.shape) + 1
     assert imgs.shape[-2:] == labels.shape[-2:] == masks.shape[-2:] == (random_size, random_size)
