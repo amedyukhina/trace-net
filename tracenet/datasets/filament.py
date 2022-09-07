@@ -75,8 +75,8 @@ class FilamentSegmentation(torch.utils.data.Dataset):
 
         seed = np.random.randint(np.iinfo('int32').max)
         torch.manual_seed(seed)
-
         image = self.transforms(image)
+        torch.manual_seed(seed)
         mask = self.transforms(mask).squeeze(0)
         image = get_intensity_transform()(image)
 
