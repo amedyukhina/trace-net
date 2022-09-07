@@ -13,7 +13,7 @@ CLASSES = [
 
 def plot_traces(img, boxes, return_image=False, size=6):
     boxes = bounding_line_to_points(boxes)
-    boxes = denormalize_points(boxes, img.shape[-2:])
+    boxes = denormalize_points(boxes, img.shape[-2:]).reshape(-1, 4)
 
     # normalize the image
     img = img.numpy()
