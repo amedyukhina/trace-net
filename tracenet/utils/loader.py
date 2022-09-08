@@ -17,7 +17,7 @@ from tracenet.datasets.transforms_segm import (
 
 
 def get_loaders(data_dir, img_dir='img', gt_dir='gt', train_dir='train', val_dir='val',
-                train_transform=None, valid_transform=None, intensity_transform=None,
+                train_transform=None, valid_transform=None, intensity_transform=None, shuffle=True,
                 segm_only=False, maxsize=None, n_points=2, batch_size=2, instance_ratio=1, **_):
     # Get Transforms
     if segm_only:
@@ -63,7 +63,7 @@ def get_loaders(data_dir, img_dir='img', gt_dir='gt', train_dir='train', val_dir
     ds_train, ds_val = ds
 
     # Get loaders
-    dl_train = DataLoader(ds_train, shuffle=True,
+    dl_train = DataLoader(ds_train, shuffle=shuffle,
                           collate_fn=collate_fn,
                           batch_size=batch_size, num_workers=batch_size)
     dl_val = DataLoader(ds_val, shuffle=False,
