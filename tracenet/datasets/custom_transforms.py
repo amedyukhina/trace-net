@@ -15,6 +15,8 @@ class GaussianNoise:
         if np.random.random() < self.probability:
             std = np.random.uniform(self.scale[0], self.scale[1])
             return tensor + torch.randn(tensor.size()) * std
+        else:
+            return tensor
 
 
 class GaussianBlur:
@@ -28,7 +30,10 @@ class GaussianBlur:
     def __call__(self, tensor):
         if np.random.random() < self.probability:
             sigma = np.random.uniform(self.sigma[0], self.sigma[1])
-            return F.gaussian_blur(tensor, [0, sigma, sigma])
+            ks = int((sigma * 4 // 2) * 2 + 1)
+            return F.gaussian_blur(tensor, kernel_size=[ks], sigma=sigma)
+        else:
+            return tensor
 
 
 class Normalize:
