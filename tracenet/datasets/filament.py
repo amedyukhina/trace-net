@@ -7,6 +7,7 @@ from torchvision.transforms import ToTensor
 
 from .transforms import apply_transform, norm_to_gray, pad_to_max, get_valid_transform
 from .transforms_segm import get_valid_transform_segm
+from .custom_transforms import Normalize
 from ..utils.points import normalize_points, points_to_bounding_line, get_first_and_last_points
 
 
@@ -16,7 +17,7 @@ class FilamentDetection(torch.utils.data.Dataset):
                  instance_ratio=1, col_id='id', maxsize=None, n_points=10, cols=None):
         self.transforms = transforms if transforms is not None \
             else get_valid_transform()
-        self.intensity_transforms = intensity_transforms
+        self.intensity_transforms = intensity_transforms if intensity_transforms is not None else Normalize()
         self.instance_ratio = instance_ratio
         self.ann_files = ann_files
         self.image_files = image_files

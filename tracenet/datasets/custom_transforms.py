@@ -29,3 +29,15 @@ class GaussianBlur:
         if np.random.random() < self.probability:
             sigma = np.random.uniform(self.sigma[0], self.sigma[1])
             return F.gaussian_blur(tensor, [0, sigma, sigma])
+
+
+class Normalize:
+    def __init__(self, min_value=0, max_value=1):
+        assert max_value > min_value
+        self.min_value = min_value
+        self.max_value = max_value
+
+    def __call__(self, tensor):
+        tensor = tensor - tensor.min()
+        tensor = tensor / tensor.max() * (self.max_value - self.min_value) + self.min_value
+        return tensor

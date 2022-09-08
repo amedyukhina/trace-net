@@ -14,6 +14,7 @@ from tracenet.datasets.transforms_segm import (
     get_valid_transform_segm,
     get_train_transform_segm,
 )
+from tracenet.datasets.custom_transforms import Normalize
 
 
 def get_loaders(data_dir, img_dir='img', gt_dir='gt', train_dir='train', val_dir='val',
@@ -30,7 +31,7 @@ def get_loaders(data_dir, img_dir='img', gt_dir='gt', train_dir='train', val_dir
                  else intensity_transform,
                  instance_ratio=instance_ratio),
             dict(transforms=get_valid_transform_segm(**kw) if valid_transform is None else valid_transform,
-                 intensity_transforms=None,
+                 intensity_transforms=Normalize(),
                  instance_ratio=1)
         ]
 
@@ -43,7 +44,7 @@ def get_loaders(data_dir, img_dir='img', gt_dir='gt', train_dir='train', val_dir
                  else intensity_transform,
                  instance_ratio=instance_ratio),
             dict(transforms=get_valid_transform() if valid_transform is None else valid_transform,
-                 intensity_transforms=None,
+                 intensity_transforms=Normalize(),
                  instance_ratio=1)
         ]
 

@@ -4,6 +4,7 @@ import torch
 import torch.utils.data
 from albumentations.pytorch.transforms import ToTensorV2
 from torchvision import transforms
+from .custom_transforms import Normalize, GaussianNoise, GaussianBlur
 
 KEYPOINT_PARAMS = A.KeypointParams(format='yx',
                                    label_fields=['point_labels'],
@@ -36,7 +37,8 @@ def get_valid_transform():
 
 def get_intensity_transform():
     return transforms.Compose([
-        transforms.ColorJitter(brightness=0.2, contrast=0.1)
+        transforms.ColorJitter(brightness=0.2, contrast=0.1),
+        Normalize(),
     ])
 
 

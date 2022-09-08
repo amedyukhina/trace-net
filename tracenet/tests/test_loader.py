@@ -59,8 +59,8 @@ def get_batch_and_assert(loader):
     imgs1, imgs2, targets, labels, masks = batch
     for imgs in [imgs1, imgs2]:
         assert isinstance(imgs, torch.Tensor)
-        assert imgs.max() <= 1
-        assert imgs.min() >= 0
+        assert imgs.max() == 1
+        assert imgs.min() == 0
     assert isinstance(labels, torch.Tensor)
     assert isinstance(masks, torch.Tensor)
     assert imgs1.shape[0] == imgs2.shape[0] == labels.shape[0] == masks.shape[0]
