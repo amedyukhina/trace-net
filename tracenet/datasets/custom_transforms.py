@@ -12,6 +12,7 @@ class GaussianNoise:
         self.probability = probability
 
     def __call__(self, tensor):
+        np.random.seed()
         if np.random.random() < self.probability:
             std = np.random.uniform(self.scale[0], self.scale[1])
             return tensor + torch.randn(tensor.size()) * std
@@ -28,6 +29,7 @@ class GaussianBlur:
         self.probability = probability
 
     def __call__(self, tensor):
+        np.random.seed()
         if np.random.random() < self.probability:
             sigma = np.random.uniform(self.sigma[0], self.sigma[1])
             ks = int((sigma * 4 // 2) * 2 + 1)
