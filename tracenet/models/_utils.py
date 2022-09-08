@@ -1,7 +1,7 @@
 from .csnet import get_csnet
 from .detr import get_detr
-from .unet import get_unet
 from .spoco_unet import get_spoco_unet
+from .unet import get_unet
 
 
 def get_model(config):

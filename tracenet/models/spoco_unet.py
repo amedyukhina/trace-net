@@ -4,7 +4,6 @@ from https://github.com/kreshuklab/spoco
 
 from functools import partial
 
-import numpy as np
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
@@ -481,7 +480,6 @@ class UNet2D(AbstractUNet):
 
 
 def get_spoco_unet(n_channels, in_channels=1, out_channels=2):
-
     net_f = UNet2D(
         in_channels=in_channels,
         out_channels=out_channels,

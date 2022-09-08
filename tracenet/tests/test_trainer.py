@@ -1,6 +1,5 @@
 import os
 
-from tracenet.datasets.filament import FilamentSegmentation
 from tracenet.utils.trainer import Trainer
 
 
@@ -19,7 +18,7 @@ def test_trainer(example_data_path, model_path, model_type):
 
 def test_trainer_segm(example_segm_data_path, model_path, model_type_segm):
     trainer = Trainer(data_dir=example_segm_data_path, model_path=model_path,
-                      train_dir='', val_dir='', dataset=FilamentSegmentation,
+                      train_dir='', val_dir='', segm_only=True,
                       model=model_type_segm, batch_size=1, epochs=2, maxsize=64)
     trainer.train()
     _assert_output(trainer)

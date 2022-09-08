@@ -123,8 +123,6 @@ class Trainer:
         with open(os.path.join(self.config.model_path, 'config.json'), 'w') as f:
             params = vars(self.config)
             params['data_dir'] = str(params['data_dir'])
-            if 'dataset' in params:
-                params['dataset'] = str(params['dataset'])
             json.dump(params, f, indent=4)
 
     def _get_model_name(self):
@@ -178,13 +176,13 @@ class Trainer:
             self.log_images(epoch + 1)
 
     def forward_pass_tracenet(self, batch):
-        imgs, targets, _, _, = batch
+        imgs, _, targets, _, _, = batch
         targets = [{k: v.to(self.device) for k, v in t.items() if isinstance(v, torch.Tensor)} for t in targets]
         outputs = self.net(imgs.to(self.device))
         return outputs, targets
 
     def forward_pass_unet(self, batch):
-        imgs, _, _, masks = batch
+        imgs, _, _, _, masks = batch
         outputs = self.net(imgs.to(self.device))
         return outputs, masks.to(self.device)
 

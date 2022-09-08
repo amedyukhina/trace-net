@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.utils.data
 from albumentations.pytorch.transforms import ToTensorV2
+from torchvision import transforms
 
 KEYPOINT_PARAMS = A.KeypointParams(format='yx',
                                    label_fields=['point_labels'],
@@ -10,11 +11,12 @@ KEYPOINT_PARAMS = A.KeypointParams(format='yx',
 
 
 def collate_fn(batch):
-    imgs, targets, labels, masks = tuple(zip(*batch))
-    imgs = torch.stack(imgs)
+    imgs1, imgs2, targets, labels, masks = tuple(zip(*batch))
+    imgs1 = torch.stack(imgs1)
+    imgs2 = torch.stack(imgs2)
     labels = torch.stack(labels)
     masks = torch.stack(masks)
-    return imgs, targets, labels, masks
+    return imgs1, imgs2, targets, labels, masks
 
 
 def get_train_transform():
@@ -22,7 +24,6 @@ def get_train_transform():
         A.Flip(p=0.5),
         A.Rotate(p=1, border_mode=0, value=0, limit=10),
         A.Transpose(p=0.5),
-        A.RandomBrightnessContrast(p=0.5),
         ToTensorV2(p=1.0)
     ], keypoint_params=KEYPOINT_PARAMS)
 
@@ -31,6 +32,12 @@ def get_valid_transform():
     return A.Compose([
         ToTensorV2(p=1.0)
     ], keypoint_params=KEYPOINT_PARAMS)
+
+
+def get_intensity_transform():
+    return transforms.Compose([
+        transforms.ColorJitter(brightness=0.2, contrast=0.1)
+    ])
 
 
 def apply_transform(transforms, target, image):
