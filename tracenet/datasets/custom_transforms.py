@@ -31,7 +31,7 @@ class GaussianBlur:
         if np.random.random() < self.probability:
             sigma = np.random.uniform(self.sigma[0], self.sigma[1])
             ks = int((sigma * 4 // 2) * 2 + 1)
-            return F.gaussian_blur(tensor, kernel_size=[ks], sigma=sigma)
+            return F.gaussian_blur(tensor, kernel_size=[ks, ks], sigma=sigma)
         else:
             return tensor
 
