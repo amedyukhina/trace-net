@@ -17,6 +17,10 @@ if __name__ == '__main__':
                         help='Subdirectory within "data-dir" to use for training')
     parser.add_argument('-v', '--val-dir', type=str, default='val',
                         help='Subdirectory within "data-dir" to use for validation')
+    parser.add_argument('-im', '--img-dir', type=str, default='val',
+                        help='Subdirectory for input image data')
+    parser.add_argument('-gt', '--gt-dir', type=str, default='val',
+                        help='Subdirectory for ground truth data')
     parser.add_argument('-mp', '--model-path', type=str,
                         help='Directory for model checkpoints', default='model')
     parser.add_argument('-e', '--epochs', type=int, default=20,
