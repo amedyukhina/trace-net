@@ -55,7 +55,16 @@ class FilamentDetection(torch.utils.data.Dataset):
             )
         )
         target['labels'] = torch.zeros((target['boxes'].shape[0],), dtype=torch.int64)
-        return image, image, target, mask, (mask > 0) * 1
+        image1 = self.transform_intensity(image)
+        image2 = self.transform_intensity(image)
+        return image1, image2, target, mask, (mask > 0) * 1
+
+    def transform_intensity(self, image):
+        image2 = self.intensity_transforms(image)
+        if image2.max() > 0:
+            return image2
+        else:
+            return self.transform_intensity(image)
 
     def __len__(self) -> int:
         return len(self.image_files)
@@ -81,19 +90,24 @@ class FilamentSegmentation(FilamentDetection):
             mask = sample_instances_from_img(mask, self.instance_ratio, seed=self.seeds[index])
         mask = torch.tensor(mask, dtype=torch.int64).unsqueeze(0)
 
-        seed = np.random.randint(np.iinfo('int32').max)
-        torch.manual_seed(seed)
-        image = self.transforms(image)
-        torch.manual_seed(seed)
-        mask = self.transforms(mask).squeeze(0)
+        image, mask = self.transform_image_mask(image, mask)
 
-        if self.intensity_transforms is not None:
-            image1 = self.intensity_transforms(image)
-            image2 = self.intensity_transforms(image)
-        else:
-            image1 = image2 = image
+        image1 = self.transform_intensity(image)
+        image2 = self.transform_intensity(image)
 
         return image1, image2, dict(), mask, (mask > 0) * 1
+
+    def transform_image_mask(self, image, mask):
+        seed = np.random.randint(np.iinfo('int32').max)
+        torch.manual_seed(seed)
+        image2 = self.transforms(image)
+        torch.manual_seed(seed)
+        mask2 = self.transforms(mask).squeeze(0)
+
+        if image2.max() > 0 and mask2.max() > 0:
+            return image2, mask2
+        else:
+            return self.transform_image_mask(image, mask)
 
     def __len__(self) -> int:
         return len(self.image_files)

@@ -3,6 +3,7 @@ from pathlib import Path
 
 from torch.utils.data import DataLoader
 
+from tracenet.datasets.custom_transforms import Normalize
 from tracenet.datasets.filament import FilamentDetection, FilamentSegmentation
 from tracenet.datasets.transforms import (
     get_train_transform,
@@ -14,7 +15,6 @@ from tracenet.datasets.transforms_segm import (
     get_valid_transform_segm,
     get_train_transform_segm,
 )
-from tracenet.datasets.custom_transforms import Normalize
 
 
 def get_loaders(data_dir, img_dir='img', gt_dir='gt', train_dir='train', val_dir='val',
