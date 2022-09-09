@@ -51,7 +51,9 @@ if __name__ == '__main__':
     config = parser.parse_args()
     config.n_channels = [int(i) for i in config.n_channels.split(',')]
     if config.dsegm:
-        config.dataset = FilamentSegmentation
+        config.segm_only = True
+    else:
+        config.segm_only = False
     config = vars(config)
 
     print('\nThe following are the parameters that will be used:')
