@@ -39,7 +39,7 @@ def get_intensity_transform():
     return transforms.Compose([
         GaussianBlur([1.5, 2], 0.5),
         GaussianNoise([0.02, 0.08], 0.5),
-        transforms.ColorJitter(brightness=0.2, contrast=0.1),
+        # transforms.ColorJitter(brightness=0.2, contrast=0.1),
         Normalize()
     ])
 
