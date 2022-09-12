@@ -5,9 +5,9 @@ import torch.utils.data
 from skimage import io
 from torchvision.transforms import ToTensor
 
+from .custom_transforms import Normalize
 from .transforms import apply_transform, norm_to_gray, pad_to_max, get_valid_transform
 from .transforms_segm import get_valid_transform_segm
-from .custom_transforms import Normalize
 from ..utils.points import normalize_points, points_to_bounding_line, get_first_and_last_points
 
 

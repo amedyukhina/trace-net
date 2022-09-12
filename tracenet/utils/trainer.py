@@ -38,6 +38,8 @@ DEFAULT_CONFIG = dict(
     n_channels=(16, 32, 64, 128),
     num_res_units=2,
     spatial_dims=2,
+    spoco=False,
+    spoco_momentum=0.999,
     wandb_api_key_file='path_to_my_wandb_api_key_file'
 )
 

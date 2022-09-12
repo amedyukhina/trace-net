@@ -1,10 +1,11 @@
 from .csnet import get_csnet
 from .detr import get_detr
+from .spoco import SpocoNet
 from .spoco_unet import get_spoco_unet
 from .unet import get_unet
 
 
-def get_model(config):
+def _get_model(config):
     if config.model.lower() == 'tracenet':
         net = get_detr(
             n_classes=config.n_classes,
@@ -35,3 +36,12 @@ def get_model(config):
                          " valid models are: 'tracenet', 'unet', 'csnet', 'spoco_unet'")
 
     return net
+
+
+def get_model(config):
+    net = _get_model(config)
+    if config.spoco:
+        net2 = _get_model(config)
+        return SpocoNet(net, net2, m=config.spoco_momentum)
+    else:
+        return net

@@ -1,6 +1,5 @@
 import argparse
 
-from tracenet.datasets.filament import FilamentSegmentation
 from tracenet.utils.trainer import Trainer
 
 if __name__ == '__main__':
@@ -45,6 +44,7 @@ if __name__ == '__main__':
     parser.add_argument('-log', '--log-tensorboard', action='store_true')
     parser.add_argument('-dsegm', '--dsegm', action='store_true',
                         help='If True, use the segmentation data loader')
+    parser.add_argument('-spoco', '--spoco', action='store_true')
     parser.add_argument('-wapi', '--wandb-api-key-file', type=str, default=None,
                         help='Path to the wandb api key file')
 
