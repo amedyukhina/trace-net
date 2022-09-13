@@ -257,7 +257,7 @@ class ContrastiveLoss(nn.Module):
         inst_pmaps = torch.stack(inst_pmaps)
         inst_masks = torch.stack(inst_masks)
 
-        return inst_pmaps.tranpose(0, 1), inst_masks.tranpose(0, 1)
+        return inst_pmaps.transpose(0, 1), inst_masks.transpose(0, 1)
 
     def instance_based_loss(self, embeddings, cluster_means, target):
         """
