@@ -10,9 +10,10 @@ from monai.metrics import DiceMetric
 from torch.utils.tensorboard import SummaryWriter
 
 from .loader import get_loaders
+from ..losses.contrastive import ContrastiveLoss
 from ..losses.criterion import Criterion
 from ..models import get_model
-from ..utils.plot import plot_traces
+from ..utils.plot import plot_traces, pca_project
 
 DEFAULT_CONFIG = dict(
     model='unet',
@@ -42,6 +43,9 @@ DEFAULT_CONFIG = dict(
     spoco_momentum=0.999,
     out_channels=16,
     instance=False,
+    delta_var=0.5,
+    delta_dist=3.,
+    kernel_threshold=0.5,
     wandb_api_key_file='path_to_my_wandb_api_key_file'
 )
 
@@ -73,11 +77,20 @@ class Trainer:
             self.forward_pass_fn = self.forward_pass_tracenet
             self._postproc_outputs_targets = self._postproc_outputs_targets_tracenet
         elif self.config.model.lower() in ['unet', 'csnet', 'spoco_unet']:
-            self.loss_function = DiceLoss(to_onehot_y=True, softmax=True)
-            self.metric = DiceMetric(include_background=False, reduction="mean")
-            self.forward_loss_fn = self.forward_loss_unet
-            self.forward_pass_fn = self.forward_pass_unet
-            self._postproc_outputs_targets = self._postproc_outputs_targets_unet
+            if self.config.instance:
+                self.metric = None
+                self.loss_function = ContrastiveLoss(self.config.delta_var,
+                                                     self.config.delta_dist,
+                                                     self.config.kernel_threshold)
+                self.forward_loss_fn = self.forward_loss_unet_instance
+                self.forward_pass_fn = self.forward_pass_unet_instance
+                self._postproc_outputs_targets = self._postproc_outputs_targets_unet_instance
+            else:
+                self.metric = DiceMetric(include_background=False, reduction="mean")
+                self.loss_function = DiceLoss(to_onehot_y=True, softmax=True)
+                self.forward_loss_fn = self.forward_loss_unet
+                self.forward_pass_fn = self.forward_pass_unet
+                self._postproc_outputs_targets = self._postproc_outputs_targets_unet
         else:
             raise ValueError(rf"{self.config.model} is not a valid model; "
                              " valid models are: 'tracenet', 'unet', 'csnet', 'spoco_unet'")
@@ -190,6 +203,11 @@ class Trainer:
         outputs = self.net(imgs.to(self.device))
         return outputs, masks.to(self.device)
 
+    def forward_pass_unet_instance(self, batch):
+        imgs, _, _, labels, _ = batch
+        outputs = self.net(imgs.to(self.device))
+        return outputs, labels.to(self.device)
+
     def forward_loss_tracenet(self, outputs, targets, step):
         loss_dict = self.loss_function(outputs, targets)
         losses = sum(loss_dict[k] * self.weight_dict[k] for k in loss_dict.keys() if k in self.weight_dict)
@@ -203,6 +221,12 @@ class Trainer:
         losses = self.loss_function(outputs, targets.unsqueeze(1))
         if step is None and self.metric is not None:
             self.metric(outputs.argmax(1).unsqueeze(1), targets.unsqueeze(1))
+        return losses
+
+    def forward_loss_unet_instance(self, outputs, targets, step):
+        losses = self.loss_function(outputs, targets)
+        # if step is None and self.metric is not None:
+        #     self.metric(outputs.argmax(1).unsqueeze(1), targets.unsqueeze(1))
         return losses
 
     def forward_loss(self, batch, step):
@@ -247,7 +271,7 @@ class Trainer:
         fn_out = os.path.join(self.config.model_path, name)
         os.makedirs(self.config.model_path, exist_ok=True)
         torch.save(self.net.state_dict(), fn_out)
-        print(rf"Saved new best model to: {fn_out}")
+        print(rf"Saved model to: {fn_out}")
 
     def _postproc_outputs_targets_tracenet(self, outputs, targets, imgs):
         probas = outputs['pred_logits'].softmax(-1)[0, :, :-1]
@@ -258,6 +282,9 @@ class Trainer:
 
     def _postproc_outputs_targets_unet(self, outputs, targets, _):
         return outputs[0].argmax(0).unsqueeze(-1), targets[0].unsqueeze(-1)
+
+    def _postproc_outputs_targets_unet_instance(self, outputs, targets, _):
+        return pca_project(outputs[0].cpu().numpy()), targets[0].unsqueeze(-1)
 
     def log_images(self, iteration):
         if self.tbwriter is not None:

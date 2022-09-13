@@ -41,3 +41,12 @@ def test_instance_model(example_segm_data_path, model_path, model_type_segm, out
     outputs = trainer.net(imgs)
     assert outputs.shape[-2:] == imgs.shape[-2:]
     assert outputs.shape[1] == trainer.config.out_channels
+
+
+def test_trainer_instance_segm(example_segm_data_path, model_path, model_type_segm):
+    trainer = Trainer(data_dir=example_segm_data_path, model_path=model_path,
+                      train_dir='', val_dir='', segm_only=True, instance=True,
+                      model=model_type_segm, batch_size=1, epochs=2, maxsize=64,
+                      out_channels=64)
+    trainer.train()
+    _assert_output(trainer)
