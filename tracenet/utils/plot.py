@@ -2,6 +2,7 @@ import numpy as np
 import pylab as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from skimage import io
+from sklearn.decomposition import PCA
 
 from tracenet.utils.points import denormalize_points, bounding_line_to_points
 
@@ -45,3 +46,29 @@ def show_imgs(imgs, s=4):
     for i, img in enumerate(imgs):
         plt.sca(ax[i])
         io.imshow(img.numpy())
+
+
+def pca_project(embeddings):
+    """
+    from https://github.com/kreshuklab/spoco
+
+    Project embeddings into 3-dim RGB space for visualization purposes
+    Args:
+        embeddings: ExSpatial embedding tensor
+    Returns:
+        RGB image
+    """
+    assert embeddings.ndim == 3
+    # reshape (C, H, W) -> (C, H * W) and transpose
+    flattened_embeddings = embeddings.reshape(embeddings.shape[0], -1).transpose()
+    # init PCA with 3 principal components: one for each RGB channel
+    pca = PCA(n_components=3)
+    # fit the model with embeddings and apply the dimensionality reduction
+    flattened_embeddings = pca.fit_transform(flattened_embeddings)
+    # reshape back to original
+    shape = list(embeddings.shape)
+    shape[0] = 3
+    img = flattened_embeddings.transpose().reshape(shape)
+    # normalize to [0, 255]
+    img = 255 * (img - np.min(img)) / np.ptp(img)
+    return img.astype('uint8')
