@@ -242,7 +242,7 @@ class ContrastiveLoss(nn.Module):
                 # ignore 0-label
                 continue
             # compute distance map
-            distance_map = torch.linalg.norm(embeddings - anchor_emb, self.norm, dim=-1)
+            distance_map = torch.norm(embeddings - anchor_emb, self.norm, dim=-1)
             # convert distance map to instance pmaps and save
             inst_pmaps.append(self.dist_to_mask(distance_map).unsqueeze(0))
             # create real mask and save
