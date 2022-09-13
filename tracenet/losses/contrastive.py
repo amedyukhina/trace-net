@@ -35,6 +35,13 @@ class ContrastiveLoss(nn.Module):
         self.dist_to_mask = Gaussian(delta_var=delta_var,
                                      pmaps_threshold=kernel_threshold if kernel_threshold is not None
                                      else delta_var)
+        self.clustered_masks = []
+        self.gt_masks = []
+        self.clear_masks()
+
+    def clear_masks(self):
+        self.clustered_masks = []
+        self.gt_masks = []
 
     def _compute_variance_term(self, cluster_means, embeddings, target, instance_counts, ignore_zero_label):
         """
@@ -267,7 +274,10 @@ class ContrastiveLoss(nn.Module):
         else:
             assert embeddings.size()[1:] == target.size()
             # extract soft and ground truth masks from the feature space
-            instance_pmaps, instance_masks = self.create_instance_pmaps_and_masks(embeddings, cluster_means, target)
+            instance_pmaps, instance_masks = self.create_instance_pmaps_and_masks(embeddings,
+                                                                                  cluster_means, target)
+            self.clustered_masks.append(instance_pmaps.detach())
+            self.gt_masks.append(instance_masks.detach())
             # compute instance-based loss
             if instance_masks is None:
                 return 0.
