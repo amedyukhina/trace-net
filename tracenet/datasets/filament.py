@@ -48,6 +48,7 @@ class FilamentDetection(torch.utils.data.Dataset):
                                                   target['point_labels'].numpy(),
                                                   image.shape[-2:], n_interp=30),
                             dtype=torch.int64)
+        mask = torch.unique(mask, return_inverse=True)[1].reshape(mask.shape)
         target['boxes'] = points_to_bounding_line(
             get_first_and_last_points(
                 normalize_points(target['keypoints'], image.shape[-2:]),
@@ -91,6 +92,7 @@ class FilamentSegmentation(FilamentDetection):
         mask = torch.tensor(mask, dtype=torch.int64).unsqueeze(0)
 
         image, mask = self.transform_image_mask(image, mask)
+        mask = torch.unique(mask, return_inverse=True)[1].reshape(mask.shape)
 
         image1 = self.transform_intensity(image)
         image2 = self.transform_intensity(image)
