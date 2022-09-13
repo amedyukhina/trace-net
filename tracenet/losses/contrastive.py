@@ -14,7 +14,7 @@ class ContrastiveLoss(nn.Module):
     'Semantic Instance Segmentation with a Discriminative Loss Function'
     """
 
-    def __init__(self, delta_var, delta_dist, kernel_threshold=None, norm='fro', alpha=1., beta=1., gamma=0.001,
+    def __init__(self, delta_var, delta_dist, kernel_threshold=0.9, norm='fro', alpha=1., beta=1., gamma=0.001,
                  instance_term_weight=1., unlabeled_push_weight=1., ignore_label=None, bg_push=False,
                  hinge_pull=True, instance_loss=None, aux_loss_ignore_zero=True):
         super().__init__()
@@ -33,8 +33,7 @@ class ContrastiveLoss(nn.Module):
 
         self.aux_loss_ignore_zero = aux_loss_ignore_zero
         self.dist_to_mask = Gaussian(delta_var=delta_var,
-                                     pmaps_threshold=kernel_threshold if kernel_threshold is not None
-                                     else delta_var)
+                                     pmaps_threshold=kernel_threshold)
         self.clustered_masks = []
         self.gt_masks = []
         self.clear_masks()
@@ -244,10 +243,10 @@ class ContrastiveLoss(nn.Module):
             # compute distance map
             distance_map = torch.norm(embeddings - anchor_emb, self.norm, dim=-1)
             # convert distance map to instance pmaps and save
-            inst_pmaps.append(self.dist_to_mask(distance_map).unsqueeze(0))
+            inst_pmaps.append(self.dist_to_mask(distance_map))
             # create real mask and save
             assert i in target
-            inst_masks.append((target == i).float().unsqueeze(0))
+            inst_masks.append((target == i).float())
 
         if not inst_masks:
             # no masks have been extracted from the image
@@ -257,7 +256,7 @@ class ContrastiveLoss(nn.Module):
         inst_pmaps = torch.stack(inst_pmaps)
         inst_masks = torch.stack(inst_masks)
 
-        return inst_pmaps.transpose(0, 1), inst_masks.transpose(0, 1)
+        return inst_pmaps.unsqueeze(0), inst_masks.unsqueeze(0)
 
     def instance_based_loss(self, embeddings, cluster_means, target):
         """
