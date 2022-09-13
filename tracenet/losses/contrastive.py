@@ -32,9 +32,9 @@ class ContrastiveLoss(nn.Module):
         self.instance_loss = instance_loss
 
         self.aux_loss_ignore_zero = aux_loss_ignore_zero
-        self.dist_to_mask = self.Gaussian(delta_var=delta_var,
-                                          pmaps_threshold=kernel_threshold if kernel_threshold is not None
-                                          else delta_var)
+        self.dist_to_mask = Gaussian(delta_var=delta_var,
+                                     pmaps_threshold=kernel_threshold if kernel_threshold is not None
+                                     else delta_var)
 
     def _compute_variance_term(self, cluster_means, embeddings, target, instance_counts, ignore_zero_label):
         """
