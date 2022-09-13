@@ -72,4 +72,3 @@ def pca_project(embeddings):
     # normalize to [0, 255]
     img = 255 * (img - np.min(img)) / np.ptp(img)
     return np.moveaxis(img.astype('uint8'), 0, -1)
-
