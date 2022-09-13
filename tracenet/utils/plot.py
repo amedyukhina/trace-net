@@ -71,4 +71,5 @@ def pca_project(embeddings):
     img = flattened_embeddings.transpose().reshape(shape)
     # normalize to [0, 255]
     img = 255 * (img - np.min(img)) / np.ptp(img)
-    return img.astype('uint8')
+    return np.moveaxis(img.astype('uint8'), 0, -1)
+
