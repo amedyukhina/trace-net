@@ -48,5 +48,6 @@ def test_trainer_instance_segm(example_segm_data_path, model_path, model_type_se
                       train_dir='', val_dir='', segm_only=True, instance=True,
                       model=model_type_segm, batch_size=1, epochs=2, maxsize=64,
                       out_channels=64)
+    imgs, _, _, labels, _ = next(iter(trainer.train_dl))
     trainer.train()
     _assert_output(trainer)

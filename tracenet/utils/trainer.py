@@ -45,7 +45,8 @@ DEFAULT_CONFIG = dict(
     instance=False,
     delta_var=0.5,
     delta_dist=3.,
-    kernel_threshold=0.5,
+    kernel_threshold=0.9,
+    include_background=False,
     wandb_api_key_file='path_to_my_wandb_api_key_file'
 )
 
@@ -77,17 +78,20 @@ class Trainer:
             self.forward_pass_fn = self.forward_pass_tracenet
             self._postproc_outputs_targets = self._postproc_outputs_targets_tracenet
         elif self.config.model.lower() in ['unet', 'csnet', 'spoco_unet']:
+            self.metric = DiceMetric(include_background=self.config.include_background,
+                                     reduction="mean")
             if self.config.instance:
-                self.metric = None
+                dice_loss = DiceLoss(include_background=self.config.include_background)
                 self.loss_function = ContrastiveLoss(self.config.delta_var,
                                                      self.config.delta_dist,
-                                                     self.config.kernel_threshold)
+                                                     self.config.kernel_threshold,
+                                                     instance_loss=dice_loss)
                 self.forward_loss_fn = self.forward_loss_unet_instance
                 self.forward_pass_fn = self.forward_pass_unet_instance
                 self._postproc_outputs_targets = self._postproc_outputs_targets_unet_instance
             else:
-                self.metric = DiceMetric(include_background=False, reduction="mean")
-                self.loss_function = DiceLoss(to_onehot_y=True, softmax=True)
+                self.loss_function = DiceLoss(include_background=self.config.include_background,
+                                              to_onehot_y=True, softmax=True)
                 self.forward_loss_fn = self.forward_loss_unet
                 self.forward_pass_fn = self.forward_pass_unet
                 self._postproc_outputs_targets = self._postproc_outputs_targets_unet
@@ -194,7 +198,8 @@ class Trainer:
 
     def forward_pass_tracenet(self, batch):
         imgs, _, targets, _, _, = batch
-        targets = [{k: v.to(self.device) for k, v in t.items() if isinstance(v, torch.Tensor)} for t in targets]
+        targets = [{k: v.to(self.device) for k, v in t.items()
+                    if isinstance(v, torch.Tensor)} for t in targets]
         outputs = self.net(imgs.to(self.device))
         return outputs, targets
 
@@ -210,7 +215,8 @@ class Trainer:
 
     def forward_loss_tracenet(self, outputs, targets, step):
         loss_dict = self.loss_function(outputs, targets)
-        losses = sum(loss_dict[k] * self.weight_dict[k] for k in loss_dict.keys() if k in self.weight_dict)
+        losses = sum(loss_dict[k] * self.weight_dict[k]
+                     for k in loss_dict.keys() if k in self.weight_dict)
         if step is not None:
             wandb.log({k: loss_dict[k] for k in loss_dict.keys()})
             for k in loss_dict.keys():
@@ -225,8 +231,13 @@ class Trainer:
 
     def forward_loss_unet_instance(self, outputs, targets, step):
         losses = self.loss_function(outputs, targets)
-        # if step is None and self.metric is not None:
-        #     self.metric(outputs.argmax(1).unsqueeze(1), targets.unsqueeze(1))
+        if step is None and self.metric is not None:
+            for mask, gt in zip(self.loss_function.clustered_masks,
+                                self.loss_function.gt_masks):
+                mask = torch.tensor((mask > self.config.kernel_threshold) * 1)
+                for i in range(mask.size(1)):
+                    self.metric(mask[:, i].unsqueeze(1), gt[:, i].unsqueeze(1))
+            self.loss_function.clear_masks()
         return losses
 
     def forward_loss(self, batch, step):

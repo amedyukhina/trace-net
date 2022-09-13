@@ -49,6 +49,7 @@ if __name__ == '__main__':
     parser.add_argument('-instance', '--instance', action='store_true',
                         help='If True, do instance segmentation, otherwise semantic')
     parser.add_argument('-spoco', '--spoco', action='store_true')
+    parser.add_argument('-inclbg', '--include-background', action='store_true')
     parser.add_argument('-wapi', '--wandb-api-key-file', type=str, default=None,
                         help='Path to the wandb api key file')
 
