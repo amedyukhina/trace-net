@@ -40,6 +40,8 @@ DEFAULT_CONFIG = dict(
     spatial_dims=2,
     spoco=False,
     spoco_momentum=0.999,
+    out_channels=16,
+    instance=False,
     wandb_api_key_file='path_to_my_wandb_api_key_file'
 )
 

@@ -37,6 +37,8 @@ if __name__ == '__main__':
                         help='Patience parameter for ReduceOnPlateau learning rate scheduler')
     parser.add_argument('-c', '--n-channels', type=str, default="16,32,64,128",
                         help='Number of channels in each UNet layers, separated by ","')
+    parser.add_argument('-oc', '--out-channels', type=int, default=16,
+                        help='Number of output channels (embedding space) for instance segmentation')
     parser.add_argument('-r', '--num-res-units', type=int, default=1,
                         help='Number of residual units in each block of Unet and CSNet')
     parser.add_argument('-wp', '--wandb-project', type=str, default='',
@@ -44,6 +46,8 @@ if __name__ == '__main__':
     parser.add_argument('-log', '--log-tensorboard', action='store_true')
     parser.add_argument('-dsegm', '--dsegm', action='store_true',
                         help='If True, use the segmentation data loader')
+    parser.add_argument('-instance', '--instance', action='store_true',
+                        help='If True, do instance segmentation, otherwise semantic')
     parser.add_argument('-spoco', '--spoco', action='store_true')
     parser.add_argument('-wapi', '--wandb-api-key-file', type=str, default=None,
                         help='Path to the wandb api key file')

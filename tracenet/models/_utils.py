@@ -6,6 +6,10 @@ from .unet import get_unet
 
 
 def _get_model(config):
+    if config.instance:
+        out_channels = config.out_channels
+    else:
+        out_channels = config.n_classes + 1
     if config.model.lower() == 'tracenet':
         net = get_detr(
             n_classes=config.n_classes,
@@ -17,19 +21,19 @@ def _get_model(config):
             n_channels=config.n_channels,
             num_res_units=config.num_res_units,
             spatial_dims=config.spatial_dims,
-            in_channels=3, out_channels=2
+            in_channels=3, out_channels=out_channels
         )
     elif config.model.lower() == 'csnet':
         net = get_csnet(
             n_channels=config.n_channels,
             num_res_units=config.num_res_units,
             spatial_dims=config.spatial_dims,
-            in_channels=3, out_channels=2
+            in_channels=3, out_channels=out_channels
         )
     elif config.model.lower() == 'spoco_unet':
         net = get_spoco_unet(
             n_channels=config.n_channels,
-            in_channels=3, out_channels=2
+            in_channels=3, out_channels=out_channels
         )
     else:
         raise ValueError(rf"{config.model} is not a valid model; "
