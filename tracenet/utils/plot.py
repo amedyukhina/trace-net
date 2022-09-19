@@ -41,6 +41,30 @@ def plot_traces(img, boxes, return_image=False, size=6):
     plt.show()
 
 
+def plot_keypoints(img, points, labels, return_image=False, size=6):
+
+    # normalize the image
+    img = img.numpy()
+
+    fig = plt.figure(figsize=(size, size))
+    plt.imshow(img)
+    ax = plt.gca()
+    colors = COLORS * 100
+    for i, lb in enumerate(np.unique(labels)):
+        ind = np.where(labels == lb)
+        ax.add_patch(plt.Polygon(np.fliplr(points[ind]), fill=False, color=colors[i], linewidth=3, closed=False))
+    plt.axis('off')
+    plt.tight_layout()
+
+    if return_image:
+        canvas = FigureCanvas(fig)
+        canvas.draw()
+        plt.axis('off')
+        return np.frombuffer(canvas.tostring_rgb(),
+                             dtype='uint8').reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    plt.show()
+
+
 def show_imgs(imgs, s=4):
     fig, ax = plt.subplots(1, len(imgs), figsize=(len(imgs) * s, s))
     for i, img in enumerate(imgs):
