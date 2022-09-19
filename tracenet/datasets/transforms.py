@@ -11,14 +11,17 @@ KEYPOINT_PARAMS = A.KeypointParams(format='yx',
                                    label_fields=['point_labels'],
                                    remove_invisible=True)
 
+TARGET_KEYS = ['keypoints', 'image_id', 'point_labels', 'mask', 'labeled_mask', 'padding']
+
 
 def collate_fn(batch):
-    imgs1, imgs2, targets, labels, masks = tuple(zip(*batch))
+    imgs1, imgs2, targets = tuple(zip(*batch))
     imgs1 = torch.stack(imgs1)
     imgs2 = torch.stack(imgs2)
-    labels = torch.stack(labels)
-    masks = torch.stack(masks)
-    return imgs1, imgs2, targets, labels, masks
+    target = dict()
+    for key in TARGET_KEYS:
+        target[key] = torch.stack([targets[i][key] for i in range(len(targets))])
+    return imgs1, imgs2, target
 
 
 def get_train_transform():
@@ -59,18 +62,3 @@ def apply_transform(transforms, target, image):
     return target, image
 
 
-def norm_to_gray(image):
-    image = image / np.max(image)
-    if len(image.shape) > 2:
-        image = np.max(image, axis=-1)
-    image = image.astype(np.float32)
-    return image
-
-
-def pad_to_max(image, maxsize=None):
-    if maxsize is None:
-        maxsize = np.max(image.shape)
-    else:
-        maxsize = max(maxsize, np.max(image.shape))
-    image = np.pad(image, [(0, maxsize - image.shape[0]), (0, maxsize - image.shape[1])])
-    return image

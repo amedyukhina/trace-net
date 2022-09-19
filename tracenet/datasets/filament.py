@@ -3,21 +3,23 @@ import pandas as pd
 import torch
 import torch.utils.data
 from skimage import io
-from torchvision.transforms import ToTensor
 
-from .custom_transforms import Normalize
-from .transforms import apply_transform, norm_to_gray, pad_to_max, get_valid_transform
-from .transforms_segm import get_valid_transform_segm
-from ..utils.points import normalize_points, points_to_bounding_line, get_first_and_last_points
+from tracenet.datasets.transforms import apply_transform
 
 
-class FilamentDetection(torch.utils.data.Dataset):
+class Filament(torch.utils.data.Dataset):
+    """
+    Dataset for the filament detection and segmentation.
+
+    The Dataset expects as input:
+        - 2D images of size <= 512 pixels, pixel size 0.035 microns (18 microns image size)
+        - List of x and y coordinates of the filaments as a csv file (include "x", "y" and "id" columns).
+    """
 
     def __init__(self, image_files, ann_files, transforms=None, intensity_transforms=None,
-                 instance_ratio=1, col_id='id', maxsize=None, n_points=10, cols=None):
-        self.transforms = transforms if transforms is not None \
-            else get_valid_transform()
-        self.intensity_transforms = intensity_transforms if intensity_transforms is not None else Normalize()
+                 instance_ratio=1, col_id='id', maxsize=512, n_points=2, cols=None):
+        self.transforms = None  # transforms
+        self.intensity_transforms = None  # intensity_transforms
         self.instance_ratio = instance_ratio
         self.ann_files = ann_files
         self.image_files = image_files
@@ -31,14 +33,21 @@ class FilamentDetection(torch.utils.data.Dataset):
         image_id = self.image_files[index]
         ann_id = self.ann_files[index]
 
-        image = pad_to_max(norm_to_gray(io.imread(image_id)), maxsize=self.maxsize)
-        image = np.dstack([image] * 3)
+        image = io.imread(image_id).astype(np.float32)
+        if len(image.shape) > 2:
+            image = np.max(image, axis=-1)
+
+        if np.max(image.shape) > self.maxsize:
+            raise ValueError(rf"Image size must be less than or equal to {self.maxsize};"
+                             rf"current image shape is {image.shape}")
+        image, padding = pad_to_size(image, self.maxsize)
+        image = torch.tensor([image] * 3, dtype=torch.float64)
 
         points, labels = df_to_points(pd.read_csv(ann_id), self.cols, self.col_id)
         target = dict(
-            keypoints=points,
+            keypoints=torch.tensor(points, dtype=torch.float64),
             image_id=torch.tensor([index]),
-            point_labels=labels,
+            point_labels=torch.tensor(labels, dtype=torch.int64),
         )
 
         if self.transforms:
@@ -49,16 +58,24 @@ class FilamentDetection(torch.utils.data.Dataset):
                                                   image.shape[-2:], n_interp=30),
                             dtype=torch.int64)
         mask = torch.unique(mask, return_inverse=True)[1].reshape(mask.shape)
-        target['boxes'] = points_to_bounding_line(
-            get_first_and_last_points(
-                normalize_points(target['keypoints'], image.shape[-2:]),
-                target['point_labels']
-            )
-        )
-        target['labels'] = torch.zeros((target['boxes'].shape[0],), dtype=torch.int64)
-        image1 = self.transform_intensity(image)
-        image2 = self.transform_intensity(image)
-        return image1, image2, target, mask, (mask > 0) * 1
+
+        # target['training_points'] = points_to_bounding_line(
+        #     get_first_and_last_points(
+        #         normalize_points(target['keypoints'], image.shape[-2:]),
+        #         target['point_labels']
+        #     )
+        # )
+
+        target['mask'] = (mask > 0) * 1
+        target['labeled_mask'] = mask
+        target['padding'] = torch.tensor(padding, dtype=torch.float64)
+
+        if self.intensity_transforms:
+            image1 = self.transform_intensity(image)
+            image2 = self.transform_intensity(image)
+        else:
+            image1 = image2 = image
+        return image1, image2, target
 
     def transform_intensity(self, image):
         image2 = self.intensity_transforms(image)
@@ -71,50 +88,6 @@ class FilamentDetection(torch.utils.data.Dataset):
         return len(self.image_files)
 
 
-class FilamentSegmentation(FilamentDetection):
-
-    def __init__(self, image_files, ann_files, transforms=None, **kwargs):
-        super(FilamentSegmentation, self).__init__(image_files, ann_files,
-                                                   transforms=get_valid_transform_segm()
-                                                   if transforms is None else transforms,
-                                                   **kwargs)
-
-    def __getitem__(self, index: int):
-        image_id = self.image_files[index]
-        ann_id = self.ann_files[index]
-
-        image = norm_to_gray(io.imread(image_id))
-        image = ToTensor()(np.dstack([image] * 3))
-
-        mask = io.imread(ann_id)
-        if self.instance_ratio < 1:
-            mask = sample_instances_from_img(mask, self.instance_ratio, seed=self.seeds[index])
-        mask = torch.tensor(mask, dtype=torch.int64).unsqueeze(0)
-
-        image, mask = self.transform_image_mask(image, mask)
-        mask = torch.unique(mask, return_inverse=True)[1].reshape(mask.shape)
-
-        image1 = self.transform_intensity(image)
-        image2 = self.transform_intensity(image)
-
-        return image1, image2, dict(), mask, (mask > 0) * 1
-
-    def transform_image_mask(self, image, mask):
-        seed = np.random.randint(np.iinfo('int32').max)
-        torch.manual_seed(seed)
-        image2 = self.transforms(image)
-        torch.manual_seed(seed)
-        mask2 = self.transforms(mask).squeeze(0)
-
-        if image2.max() > 0 and mask2.max() > 0:
-            return image2, mask2
-        else:
-            return self.transform_image_mask(image, mask)
-
-    def __len__(self) -> int:
-        return len(self.image_files)
-
-
 def sample_instances_from_img(mask, instance_ratio, min_instances=2, seed=None):
     llist = np.unique(mask)[1:]
     n_objects = int(max(min_instances, round(instance_ratio * len(llist))))
@@ -122,6 +95,15 @@ def sample_instances_from_img(mask, instance_ratio, min_instances=2, seed=None):
     np.random.shuffle(llist)
     mask[np.in1d(mask.ravel(), llist[n_objects:]).reshape(mask.shape)] = 0
     return mask
+
+
+def pad_to_size(image, size=512):
+    diff = size - np.array(image.shape)
+    pad_left = np.int_(diff / 2)
+    pad_right = diff - pad_left
+    image = np.pad(image, [(pad_left[0], pad_right[0]),
+                           (pad_left[1], pad_right[1])])
+    return image, pad_left
 
 
 # def make_points_equally_spaced(df, cols, n_points=10):
