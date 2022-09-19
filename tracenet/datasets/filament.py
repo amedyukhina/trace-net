@@ -18,8 +18,8 @@ class Filament(torch.utils.data.Dataset):
 
     def __init__(self, image_files, ann_files, transforms=None, intensity_transforms=None,
                  instance_ratio=1, col_id='id', maxsize=512, n_points=2, cols=None):
-        self.transforms = None  # transforms
-        self.intensity_transforms = None  # intensity_transforms
+        self.transforms = transforms
+        self.intensity_transforms = intensity_transforms
         self.instance_ratio = instance_ratio
         self.ann_files = ann_files
         self.image_files = image_files
@@ -41,21 +41,20 @@ class Filament(torch.utils.data.Dataset):
             raise ValueError(rf"Image size must be less than or equal to {self.maxsize};"
                              rf"current image shape is {image.shape}")
         image, padding = pad_to_size(image, self.maxsize)
-        image = torch.tensor([image] * 3, dtype=torch.float64)
+        image = np.dstack([image] * 3)
 
         points, labels = df_to_points(pd.read_csv(ann_id), self.cols, self.col_id)
         target = dict(
-            keypoints=torch.tensor(points, dtype=torch.float64),
-            image_id=torch.tensor([index]),
-            point_labels=torch.tensor(labels, dtype=torch.int64),
+            keypoints=points,
+            point_labels=labels,
         )
 
         if self.transforms:
             target, image = apply_transform(self.transforms, target, image)
 
-        mask = torch.tensor(generate_labeled_mask(target['keypoints'].numpy(),
-                                                  target['point_labels'].numpy(),
-                                                  image.shape[-2:], n_interp=30),
+        mask = torch.tensor(generate_labeled_mask(target['keypoints'],
+                                                  target['point_labels'],
+                                                  image.shape[:2], n_interp=30),
                             dtype=torch.int64)
         mask = torch.unique(mask, return_inverse=True)[1].reshape(mask.shape)
 
@@ -69,12 +68,16 @@ class Filament(torch.utils.data.Dataset):
         target['mask'] = (mask > 0) * 1
         target['labeled_mask'] = mask
         target['padding'] = torch.tensor(padding, dtype=torch.float64)
+        target['keypoints'] = torch.tensor(target['keypoints'], dtype=torch.float64)
+        target['point_labels'] = torch.tensor(target['point_labels'], dtype=torch.int64)
+        image = torch.tensor(np.moveaxis(image, -1, 0), dtype=torch.float64)
 
         if self.intensity_transforms:
             image1 = self.transform_intensity(image)
             image2 = self.transform_intensity(image)
         else:
             image1 = image2 = image
+
         return image1, image2, target
 
     def transform_intensity(self, image):

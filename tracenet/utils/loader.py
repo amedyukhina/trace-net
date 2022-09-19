@@ -6,7 +6,6 @@ from torch.utils.data import DataLoader
 from tracenet.datasets.filament import Filament
 from tracenet.datasets.transforms import (
     get_train_transform,
-    get_valid_transform,
     get_intensity_transform,
     collate_fn
 )
@@ -22,7 +21,7 @@ def get_loaders(data_dir, img_dir='img', gt_dir='gt', train_dir='train', val_dir
              intensity_transforms=get_intensity_transform() if intensity_transform is None
              else intensity_transform,
              instance_ratio=instance_ratio),
-        dict(transforms=get_valid_transform() if valid_transform is None else valid_transform,
+        dict(transforms=valid_transform,
              intensity_transforms=None,
              instance_ratio=1)
     ]

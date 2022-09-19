@@ -2,16 +2,15 @@ import albumentations as A
 import numpy as np
 import torch
 import torch.utils.data
-from albumentations.pytorch.transforms import ToTensorV2
 from torchvision import transforms
 
-from .custom_transforms import Normalize, GaussianNoise, GaussianBlur
+from .custom_transforms import GaussianNoise, GaussianBlur
 
 KEYPOINT_PARAMS = A.KeypointParams(format='yx',
                                    label_fields=['point_labels'],
                                    remove_invisible=True)
 
-TARGET_KEYS = ['keypoints', 'image_id', 'point_labels', 'mask', 'labeled_mask', 'padding']
+TARGET_KEYS = ['keypoints', 'point_labels', 'mask', 'labeled_mask', 'padding']
 
 
 def collate_fn(batch):
@@ -27,15 +26,8 @@ def collate_fn(batch):
 def get_train_transform():
     return A.Compose([
         A.Flip(p=0.5),
-        A.Rotate(p=1, border_mode=0, value=0, limit=10),
+        A.Rotate(p=1, border_mode=0, value=0, limit=30),
         A.Transpose(p=0.5),
-        ToTensorV2(p=1.0)
-    ], keypoint_params=KEYPOINT_PARAMS)
-
-
-def get_valid_transform():
-    return A.Compose([
-        ToTensorV2(p=1.0)
     ], keypoint_params=KEYPOINT_PARAMS)
 
 
@@ -44,7 +36,6 @@ def get_intensity_transform():
         GaussianBlur([1.5, 2], 0.5),
         GaussianNoise([0.02, 0.08], 0.5),
         # transforms.ColorJitter(brightness=0.2, contrast=0.1),
-        Normalize()
     ])
 
 
@@ -56,9 +47,7 @@ def apply_transform(transforms, target, image):
     while len(sample2['keypoints']) == 0:
         sample2 = transforms(**sample)
 
-    image = sample2['image'].float()
-    target['keypoints'] = torch.tensor(np.array(sample2['keypoints']), dtype=torch.float)
-    target['point_labels'] = torch.tensor(sample2['point_labels'], dtype=torch.int64)
+    image = sample2['image']
+    target['keypoints'] = np.array(sample2['keypoints'])
+    target['point_labels'] = sample2['point_labels']
     return target, image
-
-

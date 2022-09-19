@@ -2,9 +2,8 @@ import numpy as np
 import pytest
 import torch
 
-from tracenet.datasets.transforms_segm import get_valid_transform_segm, get_train_transform_segm
-from tracenet.utils.loader import get_loaders
 from tracenet.datasets.transforms import TARGET_KEYS
+from tracenet.utils.loader import get_loaders
 
 
 @pytest.fixture(params=[
