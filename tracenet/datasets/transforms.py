@@ -10,16 +10,17 @@ KEYPOINT_PARAMS = A.KeypointParams(format='yx',
                                    label_fields=['point_labels'],
                                    remove_invisible=True)
 
-TARGET_KEYS = ['keypoints', 'point_labels', 'mask', 'labeled_mask', 'padding']
-
 
 def collate_fn(batch):
     imgs1, imgs2, targets = tuple(zip(*batch))
     imgs1 = torch.stack(imgs1)
     imgs2 = torch.stack(imgs2)
     target = dict()
-    for key in TARGET_KEYS:
+    for key in ['mask', 'labeled_mask', 'padding']:
         target[key] = torch.stack([targets[i][key] for i in range(len(targets))])
+
+    for key in ['keypoints', 'point_labels']:
+        target[key] = [targets[i][key] for i in range(len(targets))]
     return imgs1, imgs2, target
 
 
