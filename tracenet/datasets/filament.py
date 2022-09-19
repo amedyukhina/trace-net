@@ -16,7 +16,7 @@ class Filament(torch.utils.data.Dataset):
         - List of x and y coordinates of the filaments as a csv file (include "x", "y" and "id" columns).
     """
 
-    def __init__(self, image_files, ann_files, transforms=None, intensity_transforms=None,
+    def __init__(self, image_files, ann_files, mean_std=(0, 1), transforms=None, intensity_transforms=None,
                  instance_ratio=1, col_id='id', maxsize=512, n_points=2, cols=None):
         self.transforms = transforms
         self.intensity_transforms = intensity_transforms
@@ -28,6 +28,7 @@ class Filament(torch.utils.data.Dataset):
         self.maxsize = maxsize
         self.n_points = n_points
         self.cols = cols if cols is not None else ['y', 'x']
+        self.mean, self.std = mean_std
 
     def __getitem__(self, index: int):
         image_id = self.image_files[index]
@@ -36,6 +37,7 @@ class Filament(torch.utils.data.Dataset):
         image = io.imread(image_id).astype(np.float32)
         if len(image.shape) > 2:
             image = np.max(image, axis=-1)
+        image = (image - self.mean) / self.std
 
         if np.max(image.shape) > self.maxsize:
             raise ValueError(rf"Image size must be less than or equal to {self.maxsize};"
