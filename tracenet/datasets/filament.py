@@ -45,7 +45,7 @@ class Filament(torch.utils.data.Dataset):
 
         points, labels = df_to_points(pd.read_csv(ann_id), self.cols, self.col_id)
         target = dict(
-            keypoints=points,
+            keypoints=points + padding,
             point_labels=labels,
         )
 
