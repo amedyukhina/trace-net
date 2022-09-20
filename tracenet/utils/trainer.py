@@ -11,19 +11,18 @@ from torch.utils.tensorboard import SummaryWriter
 
 from .loader import get_loaders
 from ..losses.contrastive import ContrastiveLoss
-from ..losses.criterion import Criterion
 from ..models import get_model
-from ..utils.plot import plot_traces, pca_project
+from ..utils.plot import pca_project
 
 DEFAULT_CONFIG = dict(
-    model='unet',
+    backbone='monai_unet',
     epochs=20,
     batch_size=2,
     lr=0.0001,
     n_classes=1,
     weight_decay=0.0005,
     factor=0.1,
-    patience=2,
+    patience=10,
     model_path='model',
     log_wandb=False,
     log_tensorboard=True,
@@ -33,8 +32,7 @@ DEFAULT_CONFIG = dict(
     val_dir='val',
     img_dir='img',
     gt_dir='gt',
-    bbox_loss_coef=5,
-    maxsize=1024,
+    maxsize=512,
     n_points=2,
     n_channels=(16, 32, 64, 128),
     num_res_units=2,
@@ -71,33 +69,18 @@ class Trainer:
         self.net = get_model(self.config)
 
         # set loss function, validation metric, and forward pass depending on the model type
-        if self.config.model.lower() == 'tracenet':
-            self.loss_function = Criterion(self.config.n_classes)
-            self.metric = None
-            self.forward_loss_fn = self.forward_loss_tracenet
-            self.forward_pass_fn = self.forward_pass_tracenet
-            self._postproc_outputs_targets = self._postproc_outputs_targets_tracenet
-        elif self.config.model.lower() in ['unet', 'csnet', 'spoco_unet']:
-            self.metric = DiceMetric(include_background=self.config.include_background,
-                                     reduction="mean")
-            if self.config.instance:
-                dice_loss = DiceLoss(include_background=self.config.include_background)
-                self.loss_function = ContrastiveLoss(self.config.delta_var,
-                                                     self.config.delta_dist,
-                                                     self.config.kernel_threshold,
-                                                     instance_loss=dice_loss)
-                self.forward_loss_fn = self.forward_loss_unet_instance
-                self.forward_pass_fn = self.forward_pass_unet_instance
-                self._postproc_outputs_targets = self._postproc_outputs_targets_unet_instance
-            else:
-                self.loss_function = DiceLoss(include_background=self.config.include_background,
-                                              to_onehot_y=True, softmax=True)
-                self.forward_loss_fn = self.forward_loss_unet
-                self.forward_pass_fn = self.forward_pass_unet
-                self._postproc_outputs_targets = self._postproc_outputs_targets_unet
+        if self.config.instance:
+            dice_loss = DiceLoss(include_background=self.config.include_background)
+            self.loss_function = ContrastiveLoss(self.config.delta_var,
+                                                 self.config.delta_dist,
+                                                 self.config.kernel_threshold,
+                                                 instance_loss=dice_loss)
         else:
-            raise ValueError(rf"{self.config.model} is not a valid model; "
-                             " valid models are: 'tracenet', 'unet', 'csnet', 'spoco_unet'")
+            self.loss_function = DiceLoss(include_background=self.config.include_background,
+                                          to_onehot_y=True, softmax=True)
+
+        self.metric = DiceMetric(include_background=self.config.include_background,
+                                 reduction="mean")
 
         # send the model and loss to cuda if available
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -105,12 +88,9 @@ class Trainer:
         self.loss_function.to(self.device)
 
         # set optimizer and learning rate scheduler
-        self.optimizer = torch.optim.AdamW(
-            params=[{"params": [p for p in self.net.parameters()
-                                if p.requires_grad]}],
-            lr=self.config.lr,
-            weight_decay=self.config.weight_decay
-        )
+        self.optimizer = torch.optim.AdamW(self.net.parameters(),
+                                           lr=self.config.lr,
+                                           weight_decay=self.config.weight_decay)
         self.lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             self.optimizer,
             mode='min',
@@ -119,7 +99,7 @@ class Trainer:
         )
 
         # set loss weight coefficients
-        self.weight_dict = {'loss_ce': 1, 'loss_bbox': self.config.bbox_loss_coef}
+        self.weight_dict = {}
 
     def __del__(self):
         if self.log_wandb:
@@ -196,53 +176,33 @@ class Trainer:
             # log images to tensorboard
             self.log_images(epoch + 1)
 
-    def forward_pass_tracenet(self, batch):
-        imgs, _, targets, _, _, = batch
-        targets = [{k: v.to(self.device) for k, v in t.items()
-                    if isinstance(v, torch.Tensor)} for t in targets]
-        outputs = self.net(imgs.to(self.device))
+    def forward_pass(self, batch):
+        imgs1, imgs2, targets = batch
+        if self.config.spoco:
+            outputs = self.net(imgs1.to(self.device),
+                               imgs2.to(self.device))
+        else:
+            outputs = self.net(imgs1.to(self.device))
         return outputs, targets
 
-    def forward_pass_unet(self, batch):
-        imgs, _, _, _, masks = batch
-        outputs = self.net(imgs.to(self.device))
-        return outputs, masks.to(self.device)
-
-    def forward_pass_unet_instance(self, batch):
-        imgs, _, _, labels, _ = batch
-        outputs = self.net(imgs.to(self.device))
-        return outputs, labels.to(self.device)
-
-    def forward_loss_tracenet(self, outputs, targets, step):
-        loss_dict = self.loss_function(outputs, targets)
-        losses = sum(loss_dict[k] * self.weight_dict[k]
-                     for k in loss_dict.keys() if k in self.weight_dict)
-        if step is not None:
-            wandb.log({k: loss_dict[k] for k in loss_dict.keys()})
-            for k in loss_dict.keys():
-                self.log_scalar_tb(k, loss_dict[k], step)
-        return losses
-
-    def forward_loss_unet(self, outputs, targets, step):
-        losses = self.loss_function(outputs, targets.unsqueeze(1))
-        if step is None and self.metric is not None:
-            self.metric(outputs.argmax(1).unsqueeze(1), targets.unsqueeze(1))
-        return losses
-
-    def forward_loss_unet_instance(self, outputs, targets, step):
-        losses = self.loss_function(outputs, targets)
-        if step is None and self.metric is not None:
+    def update_metric(self, outputs, targets):
+        if self.config.instance:
             for mask, gt in zip(self.loss_function.clustered_masks,
                                 self.loss_function.gt_masks):
                 mask = torch.tensor((mask > self.config.kernel_threshold) * 1)
                 for i in range(mask.size(1)):
                     self.metric(mask[:, i].unsqueeze(1), gt[:, i].unsqueeze(1))
             self.loss_function.clear_masks()
-        return losses
+        else:
+            self.metric(outputs.argmax(1).unsqueeze(1),
+                        targets['mask'].unsqueeze(1).to(self.device))
 
-    def forward_loss(self, batch, step):
-        outputs, targets = self.forward_pass_fn(batch)
-        losses = self.forward_loss_fn(outputs, targets, step)
+    def calculate_losses(self, outputs, targets):
+        if self.config.instance:
+            target = targets['labeled_mask']
+        else:
+            target = targets['mask'].unsqueeze(1)
+        losses = self.loss_function(outputs, target.to(self.device))
         return losses
 
     def train_epoch(self):
@@ -253,7 +213,8 @@ class Trainer:
         for batch in self.train_dl:
             step += 1
             self.optimizer.zero_grad()
-            losses = self.forward_loss(batch, step)
+            outputs, targets = self.forward_pass(batch)
+            losses = self.calculate_losses(outputs, targets)
             losses.backward()
             self.optimizer.step()
             epoch_loss += losses.item()
@@ -271,9 +232,10 @@ class Trainer:
         with torch.no_grad():
             for batch in self.val_dl:
                 step += 1
-                losses = self.forward_loss(batch, None)
+                outputs, targets = self.forward_pass(batch)
+                losses = self.calculate_losses(outputs, targets)
+                self.update_metric(outputs, targets)
                 epoch_loss += losses.item()
-
             epoch_loss /= step
         return epoch_loss
 
@@ -284,25 +246,18 @@ class Trainer:
         torch.save(self.net.state_dict(), fn_out)
         print(rf"Saved model to: {fn_out}")
 
-    def _postproc_outputs_targets_tracenet(self, outputs, targets, imgs):
-        probas = outputs['pred_logits'].softmax(-1)[0, :, :-1]
-        keep = probas.max(-1).values > 0.7
-        output = plot_traces(imgs[0].cpu(), outputs['pred_boxes'][0, keep].cpu(), return_image=True)
-        target = plot_traces(imgs[0].cpu(), targets[0]['boxes'].cpu(), return_image=True)
-        return output, target
-
-    def _postproc_outputs_targets_unet(self, outputs, targets, _):
-        return outputs[0].argmax(0).unsqueeze(-1), targets[0].unsqueeze(-1)
-
-    def _postproc_outputs_targets_unet_instance(self, outputs, targets, _):
-        return pca_project(outputs[0].cpu().numpy()), targets[0].unsqueeze(-1)
+    def _postproc_outputs_targets(self, _, outputs, targets):
+        if self.config.instance:
+            return pca_project(outputs[0].cpu().numpy()), targets['labeled_mask'][0].unsqueeze(-1)
+        else:
+            return outputs[0].argmax(0).unsqueeze(-1), targets['mask'][0].unsqueeze(-1)
 
     def log_images(self, iteration):
         if self.tbwriter is not None:
             batch = next(iter(self.val_dl))
             with torch.no_grad():
-                outputs, targets = self.forward_pass_fn(batch)
+                outputs, targets = self.forward_pass(batch)
             self.tbwriter.add_image('input', batch[0][0], iteration, dataformats='CHW')
-            output, target = self._postproc_outputs_targets(outputs, targets, batch[0])
+            output, target = self._postproc_outputs_targets(batch[0], outputs, targets)
             self.tbwriter.add_image('output', output, iteration, dataformats='HWC')
             self.tbwriter.add_image('target', target, iteration, dataformats='HWC')

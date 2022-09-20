@@ -80,7 +80,7 @@ class Filament(torch.utils.data.Dataset):
         else:
             image1 = image2 = image
 
-        return image1, image2, target
+        return image1.float(), image2.float(), target
 
     def transform_intensity(self, image):
         image2 = self.intensity_transforms(image)

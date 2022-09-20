@@ -38,28 +38,6 @@ def example_data_path():
 
 
 @pytest.fixture(scope='module')
-def example_segm_data_path(example_data_path):
-    path = tempfile.mkdtemp()
-    path_gt = os.path.join(path, 'gt')
-    path_img = os.path.join(path, 'img')
-    os.makedirs(path_img, exist_ok=True)
-    os.makedirs(path_gt, exist_ok=True)
-
-    fn = os.listdir(os.path.join(example_data_path, 'gt'))[0]
-    df = pd.read_csv(os.path.join(example_data_path, 'gt', fn))
-
-    fn = os.listdir(os.path.join(example_data_path, 'img'))[0]
-    img = io.imread(os.path.join(example_data_path, 'img', fn))
-
-    points, labels = df_to_points(df, ['y', 'x'], col_id='id')
-    mask = generate_labeled_mask(points, labels, img.shape, n_interp=30)
-    io.imsave(os.path.join(path_img, fn), img)
-    io.imsave(os.path.join(path_gt, fn), mask.astype(np.uint8))
-    yield path
-    shutil.rmtree(path)
-
-
-@pytest.fixture(scope='module')
 def model_path():
     path = tempfile.mkdtemp()
     os.makedirs(path, exist_ok=True)
@@ -67,13 +45,8 @@ def model_path():
     shutil.rmtree(path)
 
 
-@pytest.fixture(scope='module', params=['unet', 'csnet', 'tracenet'])
-def model_type(request):
-    return request.param
-
-
-@pytest.fixture(scope='module', params=['unet', 'csnet'])
-def model_type_segm(request):
+@pytest.fixture(scope='module', params=['monai_unet', 'csnet', 'spoco_unet'])
+def backbone(request):
     return request.param
 
 
