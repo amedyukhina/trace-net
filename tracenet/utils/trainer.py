@@ -9,6 +9,7 @@ from monai.losses import DiceLoss
 from monai.metrics import DiceMetric
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
+from skimage.color import label2rgb
 
 from .loader import get_loaders
 from ..losses.contrastive import ContrastiveLoss
@@ -238,7 +239,8 @@ class Trainer:
 
     def _postproc_outputs_targets(self, _, outputs, targets):
         if self.config.instance:
-            return pca_project(outputs[0].cpu().numpy()), targets['labeled_mask'][0].unsqueeze(-1)
+            return pca_project(outputs[0].cpu().numpy()), \
+                   label2rgb(targets['labeled_mask'][0].numpy(), bg_label=0)
         else:
             return outputs[0].argmax(0).unsqueeze(-1), targets['mask'][0].unsqueeze(-1)
 
