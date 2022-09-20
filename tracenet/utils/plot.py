@@ -64,11 +64,14 @@ def plot_keypoints(img, points, labels, return_image=False, size=6):
     plt.show()
 
 
-def show_imgs(imgs, s=4):
+def show_imgs(imgs, s=4, norm=True):
     fig, ax = plt.subplots(1, len(imgs), figsize=(len(imgs) * s, s))
     for i, img in enumerate(imgs):
         plt.sca(ax[i])
-        io.imshow(normalize(img.numpy()))
+        im = img.numpy()
+        if norm:
+            im = normalize(im)
+        io.imshow(im)
 
 
 def pca_project(embeddings):
