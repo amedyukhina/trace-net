@@ -4,7 +4,7 @@ import torch
 import torch.utils.data
 from torchvision import transforms
 
-from .custom_transforms import GaussianNoise, GaussianBlur
+from .custom_transforms import GaussianNoise, GaussianBlur, RandomBrightnessContrast
 
 KEYPOINT_PARAMS = A.KeypointParams(format='yx',
                                    label_fields=['point_labels'],
@@ -35,8 +35,8 @@ def get_train_transform():
 def get_intensity_transform():
     return transforms.Compose([
         GaussianBlur([1.5, 2], 0.5),
-        GaussianNoise([0.02, 0.08], 0.5),
-        # transforms.ColorJitter(brightness=0.2, contrast=0.1),
+        GaussianNoise([0.5, 0.52], 1),
+        RandomBrightnessContrast(brightness=(-0.5, 0.5), contrast=(0.5, 1.5), probability=1),
     ])
 
 
