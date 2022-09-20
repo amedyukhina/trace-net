@@ -14,7 +14,7 @@ from skimage.color import label2rgb
 from .loader import get_loaders
 from ..losses.contrastive import ContrastiveLoss
 from ..models import get_model
-from ..utils.plot import pca_project
+from ..utils.plot import pca_project, normalize
 
 DEFAULT_CONFIG = dict(
     backbone='monai_unet',
@@ -250,13 +250,8 @@ class Trainer:
             batch = next(iter(self.val_dl))
             with torch.no_grad():
                 outputs, targets = self.forward_pass(batch)
-            self.tbwriter.add_image('input', _normalize(batch[0][0]), iteration, dataformats='CHW')
+            self.tbwriter.add_image('input', normalize(batch[0][0]), iteration, dataformats='CHW')
             output, target = self._postproc_outputs_targets(batch[0], outputs, targets)
             self.tbwriter.add_image('output', output, iteration, dataformats='HWC')
             self.tbwriter.add_image('target', target, iteration, dataformats='HWC')
 
-
-def _normalize(img):
-    img = img - img.min()
-    img = img / img.max()
-    return img
