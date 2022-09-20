@@ -43,7 +43,7 @@ def plot_traces(img, boxes, return_image=False, size=6):
 
 def plot_keypoints(img, points, labels, return_image=False, size=6):
     # normalize the image
-    img = img.numpy()
+    img = normalize(img.numpy())
 
     fig = plt.figure(figsize=(size, size))
     plt.imshow(img)
@@ -68,7 +68,7 @@ def show_imgs(imgs, s=4):
     fig, ax = plt.subplots(1, len(imgs), figsize=(len(imgs) * s, s))
     for i, img in enumerate(imgs):
         plt.sca(ax[i])
-        io.imshow(img.numpy())
+        io.imshow(normalize(img.numpy()))
 
 
 def pca_project(embeddings):
@@ -95,3 +95,9 @@ def pca_project(embeddings):
     # normalize to [0, 255]
     img = 255 * (img - np.min(img)) / np.ptp(img)
     return np.moveaxis(img.astype('uint8'), 0, -1)
+
+
+def normalize(img):
+    img = img - img.min()
+    img = img / img.max()
+    return img
