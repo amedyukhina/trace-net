@@ -22,6 +22,7 @@ DEFAULT_CONFIG = dict(
     batch_size=2,
     lr=0.0001,
     n_classes=1,
+    mean_std=(0, 1),
     weight_decay=0.0005,
     factor=0.1,
     patience=10,
