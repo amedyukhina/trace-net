@@ -25,7 +25,7 @@ def out_channels(request):
 
 def test_instance_model(example_data_path, model_path, out_channels):
     trainer = Trainer(data_dir=example_data_path, model_path=model_path,
-                      train_dir='', val_dir='', segm_only=True, instance=True,
+                      train_dir='', val_dir='', instance=True,
                       backbone='monai_unet', batch_size=1, epochs=2, out_channels=out_channels)
     imgs = next(iter(trainer.train_dl))[0].to(trainer.device)
     trainer.net.to(trainer.device).eval()
@@ -36,7 +36,7 @@ def test_instance_model(example_data_path, model_path, out_channels):
 
 def test_trainer_instance(example_data_path, model_path):
     trainer = Trainer(data_dir=example_data_path, model_path=model_path,
-                      train_dir='', val_dir='', segm_only=True, instance=True,
+                      train_dir='', val_dir='', instance=True,
                       backbone='monai_unet', batch_size=1, epochs=2, out_channels=64)
     trainer.train()
     _assert_output(trainer)

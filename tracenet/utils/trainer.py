@@ -186,24 +186,14 @@ class Trainer:
             outputs = self.net(imgs1.to(self.device))
         return outputs, targets
 
-    def update_metric(self, outputs, targets):
+    def calculate_losses(self, outputs, targets, metric=None):
         if self.config.instance:
-            for mask, gt in zip(self.loss_function.clustered_masks,
-                                self.loss_function.gt_masks):
-                mask = torch.tensor((mask > self.config.kernel_threshold) * 1)
-                for i in range(mask.size(1)):
-                    self.metric(mask[:, i].unsqueeze(1), gt[:, i].unsqueeze(1))
-            self.loss_function.clear_masks()
+            losses = self.loss_function(outputs, targets['labeled_mask'].to(self.device), metric)
         else:
-            self.metric(outputs.argmax(1).unsqueeze(1),
-                        targets['mask'].unsqueeze(1).to(self.device))
-
-    def calculate_losses(self, outputs, targets):
-        if self.config.instance:
-            target = targets['labeled_mask']
-        else:
-            target = targets['mask'].unsqueeze(1)
-        losses = self.loss_function(outputs, target.to(self.device))
+            losses = self.loss_function(outputs, targets['mask'].unsqueeze(1).to(self.device))
+            if metric is not None:
+                metric(outputs.argmax(1).unsqueeze(1),
+                       targets['mask'].unsqueeze(1).to(self.device))
         return losses
 
     def train_epoch(self):
@@ -234,8 +224,7 @@ class Trainer:
             for batch in tqdm(self.val_dl):
                 step += 1
                 outputs, targets = self.forward_pass(batch)
-                losses = self.calculate_losses(outputs, targets)
-                self.update_metric(outputs, targets)
+                losses = self.calculate_losses(outputs, targets, self.metric)
                 epoch_loss += losses.item()
             epoch_loss /= step
         return epoch_loss

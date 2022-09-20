@@ -32,15 +32,9 @@ class ContrastiveLoss(nn.Module):
         self.instance_loss = instance_loss
 
         self.aux_loss_ignore_zero = aux_loss_ignore_zero
+        self.kernel_threshold = kernel_threshold
         self.dist_to_mask = Gaussian(delta_var=delta_var,
                                      pmaps_threshold=kernel_threshold)
-        self.clustered_masks = []
-        self.gt_masks = []
-        self.clear_masks()
-
-    def clear_masks(self):
-        self.clustered_masks = []
-        self.gt_masks = []
 
     def _compute_variance_term(self, cluster_means, embeddings, target, instance_counts, ignore_zero_label):
         """
@@ -258,7 +252,7 @@ class ContrastiveLoss(nn.Module):
 
         return inst_pmaps.unsqueeze(0), inst_masks.unsqueeze(0)
 
-    def instance_based_loss(self, embeddings, cluster_means, target):
+    def instance_based_loss(self, embeddings, cluster_means, target, metric=None):
         """
         Computes auxiliary loss based on embeddings and a given list of target instances together with
         their mean embeddings
@@ -267,6 +261,7 @@ class ContrastiveLoss(nn.Module):
             embeddings (torch.tensor): pixel embeddings (ExSPATIAL)
             cluster_means (torch.tensor): mean embeddings per instance (CxExSINGLETON_SPATIAL)
             target (torch.tensor): ground truth instance segmentation (SPATIAL)
+            metric: validation metric
         """
         if self.instance_loss is None:
             return 0.
@@ -275,14 +270,17 @@ class ContrastiveLoss(nn.Module):
             # extract soft and ground truth masks from the feature space
             instance_pmaps, instance_masks = self.create_instance_pmaps_and_masks(embeddings,
                                                                                   cluster_means, target)
-            self.clustered_masks.append(instance_pmaps.detach())
-            self.gt_masks.append(instance_masks.detach())
-            # compute instance-based loss
+            # update the metric for validation
+            if metric is not None:
+                mask = torch.tensor((instance_pmaps.detach() > self.kernel_threshold) * 1)
+                for i in range(mask.size(1)):
+                    metric(mask[:, i].unsqueeze(1), instance_masks.detach()[:, i].unsqueeze(1))
+
             if instance_masks is None:
                 return 0.
             return self.instance_loss(instance_pmaps, instance_masks)
 
-    def forward(self, input_, target):
+    def forward(self, input_, target, metric=None):
         """
         Args:
              input_ (torch.tensor): embeddings predicted by the network (NxExDxHxW) (E - embedding dims)
@@ -292,6 +290,7 @@ class ContrastiveLoss(nn.Module):
                                     if self.ignore_zero_label is True then expects target of shape Nx2xDxHxW where
                                     relabeled version is in target[:,0,...] and the original labeling is in
                                     target[:,1,...]
+             metric: validation metric
 
         Returns:
             Combined loss defined as: alpha * variance_term + beta * distance_term + gamma * regularization_term
@@ -329,7 +328,7 @@ class ContrastiveLoss(nn.Module):
                 unlabeled_push = self._compute_background_push(cluster_means, single_input, single_target)
 
             # compute the instance-based loss
-            instance_loss = self.instance_based_loss(single_input, cluster_means, single_target)
+            instance_loss = self.instance_based_loss(single_input, cluster_means, single_target, metric)
 
             # compute distance term, i.e. push force
             distance_term = self._compute_distance_term(cluster_means, ignore_zero_label)
