@@ -24,7 +24,7 @@ def instance_ratio(request):
 
 
 def test_loader(example_data_path, dl_index):
-    loader = get_loaders(example_data_path, train_dir='', val_dir='', batch_size=1)[dl_index]
+    loader = get_loaders(example_data_path, train_dir='', val_dir='', batch_size=1, mean_std=(3, 0.4))[dl_index]
     get_batch_and_assert(loader)
 
 
