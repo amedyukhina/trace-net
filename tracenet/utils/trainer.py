@@ -8,6 +8,7 @@ import wandb
 from monai.losses import DiceLoss
 from monai.metrics import DiceMetric
 from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
 from .loader import get_loaders
 from ..losses.contrastive import ContrastiveLoss
@@ -210,7 +211,7 @@ class Trainer:
         self.loss_function.train()
         epoch_loss = 0
         step = 0
-        for batch in self.train_dl:
+        for batch in tqdm(self.train_dl):
             step += 1
             self.optimizer.zero_grad()
             outputs, targets = self.forward_pass(batch)
@@ -230,7 +231,7 @@ class Trainer:
         epoch_loss = 0
         step = 0
         with torch.no_grad():
-            for batch in self.val_dl:
+            for batch in tqdm(self.val_dl):
                 step += 1
                 outputs, targets = self.forward_pass(batch)
                 losses = self.calculate_losses(outputs, targets)
