@@ -477,14 +477,3 @@ class UNet2D(AbstractUNet):
                                      num_groups=num_groups,
                                      conv_padding=conv_padding,
                                      is3d=False)
-
-
-def get_spoco_unet(n_channels, in_channels=1, out_channels=2):
-    net_f = UNet2D(
-        in_channels=in_channels,
-        out_channels=out_channels,
-        f_maps=n_channels,
-        layer_order="bcr"
-    )
-
-    return net_f

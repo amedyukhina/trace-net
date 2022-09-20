@@ -42,7 +42,6 @@ def plot_traces(img, boxes, return_image=False, size=6):
 
 
 def plot_keypoints(img, points, labels, return_image=False, size=6):
-
     # normalize the image
     img = img.numpy()
 
