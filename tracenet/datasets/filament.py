@@ -111,35 +111,6 @@ def pad_to_size(image, size=512):
     return image, pad_left
 
 
-# def make_points_equally_spaced(df, cols, n_points=10):
-#     """
-#     Interpolate the filament to a given number of points.
-#     """
-#     df = _interpolate_points(df.copy(), cols, n_interp=3)
-#
-#     # create empty image
-#     img = np.zeros(np.array([int(df[c].max()) + 10 for c in cols]))
-#
-#     # calculate the distance profile
-#     coords = df[cols].values
-#     dist = np.array([0] + list(_dist(coords[:-1], coords[1:])))
-#     dist = np.cumsum(dist)
-#     dist_img = np.zeros_like(img)
-#     dist_img[tuple(np.int_(coords.transpose()))] = dist
-#
-#     # new distance profile
-#     n_dist = np.linspace(dist[0], dist[-1], n_points)
-#
-#     # new coordinates
-#     n_coords = [coords[0]]
-#     for i in range(1, len(n_dist)):
-#         diff_img = np.abs(dist_img - n_dist[i])
-#         n_coords.append(np.array(np.where(diff_img == np.min(diff_img))).transpose()[0])
-#
-#     n_df = pd.DataFrame(n_coords, columns=cols)
-#     return n_df
-
-
 def df_to_points(df, cols, col_id):
     points = []
     labels = []

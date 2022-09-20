@@ -36,15 +36,3 @@ class GaussianBlur:
             return F.gaussian_blur(tensor, kernel_size=[ks, ks], sigma=sigma)
         else:
             return tensor
-
-
-class Normalize:
-    def __init__(self, min_value=0, max_value=1):
-        assert max_value > min_value
-        self.min_value = min_value
-        self.max_value = max_value
-
-    def __call__(self, tensor):
-        tensor = tensor - tensor.min()
-        tensor = tensor / tensor.max() * (self.max_value - self.min_value) + self.min_value
-        return tensor
