@@ -45,7 +45,12 @@ class Filament(torch.utils.data.Dataset):
         image, padding = pad_to_size(image, self.maxsize)
         image = np.dstack([image] * 3)
 
-        points, labels = df_to_points(pd.read_csv(ann_id), self.cols, self.col_id)
+        df = pd.read_csv(ann_id)
+
+        if self.instance_ratio < 1:
+            df = sample_instances(df, self.instance_ratio, seed=self.seeds[index], col_id=self.col_id)
+
+        points, labels = df_to_points(df, self.cols, self.col_id)
         target = dict(
             keypoints=points + padding,
             point_labels=labels,
@@ -93,13 +98,13 @@ class Filament(torch.utils.data.Dataset):
         return len(self.image_files)
 
 
-def sample_instances_from_img(mask, instance_ratio, min_instances=2, seed=None):
-    llist = np.unique(mask)[1:]
+def sample_instances(df, instance_ratio, seed, col_id, min_instances=2):
+    llist = df[col_id].unique()
     n_objects = int(max(min_instances, round(instance_ratio * len(llist))))
     np.random.seed(seed)
     np.random.shuffle(llist)
-    mask[np.in1d(mask.ravel(), llist[n_objects:]).reshape(mask.shape)] = 0
-    return mask
+    df_new = df[df[col_id].isin(llist[:n_objects])].reset_index(drop=True)
+    return df_new
 
 
 def pad_to_size(image, size=512):

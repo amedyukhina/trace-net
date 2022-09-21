@@ -1,7 +1,9 @@
+import albumentations as A
 import numpy as np
 import pytest
 import torch
 
+from tracenet.datasets.transforms import KEYPOINT_PARAMS
 from tracenet.utils.loader import get_loaders
 
 
@@ -28,13 +30,17 @@ def test_loader(example_data_path, dl_index):
     get_batch_and_assert(loader)
 
 
-# def test_spoco_loader(example_segm_data_path, instance_ratio):
-#     train_dl, val_dl = get_loaders(example_segm_data_path, train_dir='', val_dir='', batch_size=1,
-#                                    train_transform=get_valid_transform_segm(500),
-#                                    segm_only=True, instance_ratio=instance_ratio, maxsize=500)
-#     _, _, _, labels_train, _ = get_batch_and_assert(train_dl)
-#     _, _, _, labels_val, _ = get_batch_and_assert(val_dl)
-#     assert len(np.unique(labels_train)[1:]) == int(round(instance_ratio * len(np.unique(labels_val)[1:])))
+def test_spoco_loader(example_data_path, instance_ratio):
+    transform = A.Compose([], keypoint_params=KEYPOINT_PARAMS)
+    train_dl, val_dl = get_loaders(example_data_path, train_dir='', val_dir='', batch_size=1,
+                                   train_transform=transform,
+                                   instance_ratio=instance_ratio, shuffle=False)
+    _, _, target_train = get_batch_and_assert(train_dl)
+    _, _, target_val = get_batch_and_assert(val_dl)
+    assert len(np.unique(target_train['point_labels'][0])) == \
+           int(round(len(np.unique(target_val['point_labels'][0])) * instance_ratio))
+    assert len(np.unique(target_train['labeled_mask'])[1:]) == \
+           int(round(instance_ratio * len(np.unique(target_val['labeled_mask'])[1:])))
 
 
 def get_batch_and_assert(loader):
