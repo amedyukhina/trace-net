@@ -41,6 +41,7 @@ DEFAULT_CONFIG = dict(
     num_res_units=2,
     spatial_dims=2,
     spoco=False,
+    tracing=False,
     spoco_momentum=0.999,
     out_channels=16,
     instance=False,
