@@ -16,10 +16,10 @@ def collate_fn(batch):
     imgs1 = torch.stack(imgs1)
     imgs2 = torch.stack(imgs2)
     target = dict()
-    for key in ['mask', 'labeled_mask', 'padding', 'trace']:
+    for key in ['mask', 'labeled_mask', 'padding']:
         target[key] = torch.stack([targets[i][key] for i in range(len(targets))])
 
-    for key in ['keypoints', 'point_labels']:
+    for key in ['keypoints', 'point_labels', 'trace']:
         target[key] = [targets[i][key] for i in range(len(targets))]
     return imgs1, imgs2, target
 

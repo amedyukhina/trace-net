@@ -51,12 +51,12 @@ def get_batch_and_assert(loader):
         assert isinstance(imgs, torch.Tensor)
     assert imgs1.shape[0] == imgs2.shape[0]
     assert isinstance(targets, dict)
-    for key in ['mask', 'labeled_mask', 'padding', 'trace']:
+    for key in ['mask', 'labeled_mask', 'padding']:
         assert key in targets
         assert isinstance(targets[key], torch.Tensor)
         assert targets[key].shape[0] == imgs1.shape[0]
 
-    for key in ['keypoints', 'point_labels']:
+    for key in ['keypoints', 'point_labels', 'trace']:
         assert key in targets
         assert isinstance(targets[key], list)
         assert len(targets[key]) == imgs1.shape[0]
