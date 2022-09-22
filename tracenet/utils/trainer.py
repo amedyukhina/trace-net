@@ -3,13 +3,14 @@ import datetime
 import json
 import os
 
+import numpy as np
 import torch
 import wandb
 from monai.losses import DiceLoss
 from monai.metrics import DiceMetric
+from skimage.color import label2rgb
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
-from skimage.color import label2rgb
 
 from .loader import get_loaders
 from ..losses.contrastive import ContrastiveLoss
@@ -160,7 +161,7 @@ class Trainer:
             self.log_scalar_tb('learning rate', self.optimizer.param_groups[0]['lr'], epoch + 1)
 
             # validation pass
-            val_loss = self.validate_epoch()
+            val_loss, val_loss_dicts = self.validate_epoch()
 
             # log validation losses and metrics
             print(f"epoch {epoch + 1} validation loss: {val_loss:.4f}")
@@ -171,6 +172,11 @@ class Trainer:
                 self.metric.reset()
                 wandb.log({self.metric.__class__.__name__: val_metric})
                 self.log_scalar_tb(self.metric.__class__.__name__, val_metric, epoch + 1)
+            if val_loss_dicts[0] is not None:
+                for key in val_loss_dicts[0].keys():
+                    loss_val = np.mean([val_loss_dicts[i][key].item() for i in range(len(val_loss_dicts))])
+                    wandb.log({rf'val {key}': loss_val})
+                    self.log_scalar_tb(rf'val {key}', loss_val, epoch + 1)
 
             # update learning rate
             self.lr_scheduler.step(val_loss)
@@ -194,6 +200,7 @@ class Trainer:
         return outputs, targets
 
     def calculate_losses(self, outputs, targets, metric=None):
+        loss_dict = None
         if self.config.tracing:
             for key in ['trace', 'trace_class']:
                 targets[key] = [t.to(self.device) for t in targets[key]]
@@ -206,7 +213,7 @@ class Trainer:
             if metric is not None:
                 metric(outputs.argmax(1).unsqueeze(1),
                        targets['mask'].unsqueeze(1).to(self.device))
-        return losses
+        return losses, loss_dict
 
     def train_epoch(self):
         self.net.train()
@@ -217,7 +224,7 @@ class Trainer:
             step += 1
             self.optimizer.zero_grad()
             outputs, targets = self.forward_pass(batch)
-            losses = self.calculate_losses(outputs, targets)
+            losses, _ = self.calculate_losses(outputs, targets)
             losses.backward()
             self.optimizer.step()
             epoch_loss += losses.item()
@@ -232,14 +239,16 @@ class Trainer:
         self.loss_function.eval()
         epoch_loss = 0
         step = 0
+        loss_dicts = []
         with torch.no_grad():
             for batch in tqdm(self.val_dl):
                 step += 1
                 outputs, targets = self.forward_pass(batch)
-                losses = self.calculate_losses(outputs, targets, self.metric)
+                losses, loss_dict = self.calculate_losses(outputs, targets, self.metric)
+                loss_dicts.append(loss_dict)
                 epoch_loss += losses.item()
             epoch_loss /= step
-        return epoch_loss
+        return epoch_loss, loss_dicts
 
     def save_model(self, mode=0):
         name = self.best_model_name if mode else self.last_model_name
@@ -270,4 +279,3 @@ class Trainer:
             output, target = self._postproc_outputs_targets(batch[0], outputs, targets)
             self.tbwriter.add_image('output', output, iteration, dataformats='HWC')
             self.tbwriter.add_image('target', target, iteration, dataformats='HWC')
-
