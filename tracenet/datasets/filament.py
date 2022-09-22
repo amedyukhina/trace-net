@@ -70,6 +70,12 @@ class Filament(torch.utils.data.Dataset):
                             dtype=torch.int64)
         mask = torch.unique(mask, return_inverse=True)[1].reshape(mask.shape)
 
+        target['mask'] = (mask > 0) * 1
+        target['labeled_mask'] = mask
+        target['padding'] = torch.tensor(padding, dtype=torch.float64)
+        target['keypoints'] = torch.tensor(target['keypoints'], dtype=torch.float64)
+        target['point_labels'] = torch.tensor(target['point_labels'], dtype=torch.int64)
+
         target['trace'] = points_to_bounding_line(
             get_first_and_last_points(
                 normalize_points(target['keypoints'], image.shape[-2:]),
@@ -77,11 +83,6 @@ class Filament(torch.utils.data.Dataset):
             )
         )
 
-        target['mask'] = (mask > 0) * 1
-        target['labeled_mask'] = mask
-        target['padding'] = torch.tensor(padding, dtype=torch.float64)
-        target['keypoints'] = torch.tensor(target['keypoints'], dtype=torch.float64)
-        target['point_labels'] = torch.tensor(target['point_labels'], dtype=torch.int64)
         image = torch.tensor(np.moveaxis(image, -1, 0), dtype=torch.float64)
 
         if self.intensity_transforms:
