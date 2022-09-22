@@ -3,6 +3,7 @@ from monai.networks.layers import Norm
 from .backbones.csnet import CSNet
 from .backbones.monai_unet import monai_unet
 from .backbones.spoco_unet import UNet2D as SpocoBackbone
+from .detr import detr
 from .spoco import SpocoNet
 
 
@@ -43,7 +44,15 @@ def get_backbone(config):
 
 
 def get_model(config):
-    net = get_backbone(config)
+    if config.tracing:
+        net = detr(
+            n_classes=config.n_classes,
+            n_points=2,
+            # n_points=config.n_points,
+            pretrained=True
+        )
+    else:
+        net = get_backbone(config)
     if config.spoco:
         net2 = get_backbone(config)
         return SpocoNet(net, net2, m=config.spoco_momentum)

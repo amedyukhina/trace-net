@@ -13,8 +13,9 @@ from skimage.color import label2rgb
 
 from .loader import get_loaders
 from ..losses.contrastive import ContrastiveLoss
+from ..losses.criterion import Criterion
 from ..models import get_model
-from ..utils.plot import pca_project, normalize
+from ..utils.plot import pca_project, normalize, plot_traces
 
 DEFAULT_CONFIG = dict(
     backbone='monai_unet',
@@ -72,8 +73,14 @@ class Trainer:
         self.train_dl, self.val_dl = get_loaders(**config)
         self.net = get_model(self.config)
 
+        self.metric = DiceMetric(include_background=self.config.include_background,
+                                 reduction="mean")
+
         # set loss function, validation metric, and forward pass depending on the model type
-        if self.config.instance:
+        if self.config.tracing:
+            self.loss_function = Criterion(self.config.n_classes)
+            self.metric = None
+        elif self.config.instance:
             dice_loss = DiceLoss(include_background=self.config.include_background)
             self.loss_function = ContrastiveLoss(self.config.delta_var,
                                                  self.config.delta_dist,
@@ -82,9 +89,6 @@ class Trainer:
         else:
             self.loss_function = DiceLoss(include_background=self.config.include_background,
                                           to_onehot_y=True, softmax=True)
-
-        self.metric = DiceMetric(include_background=self.config.include_background,
-                                 reduction="mean")
 
         # send the model and loss to cuda if available
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -103,7 +107,7 @@ class Trainer:
         )
 
         # set loss weight coefficients
-        self.weight_dict = {}
+        self.weight_dict = {'loss_ce': 1, 'loss_trace': 5}
 
     def __del__(self):
         if self.log_wandb:
@@ -190,7 +194,12 @@ class Trainer:
         return outputs, targets
 
     def calculate_losses(self, outputs, targets, metric=None):
-        if self.config.instance:
+        if self.config.tracing:
+            for key in ['trace', 'trace_class']:
+                targets[key] = [t.to(self.device) for t in targets[key]]
+            loss_dict = self.loss_function(outputs, targets)
+            losses = sum(loss_dict[k] * self.weight_dict[k] for k in loss_dict.keys() if k in self.weight_dict)
+        elif self.config.instance:
             losses = self.loss_function(outputs, targets['labeled_mask'].to(self.device), metric)
         else:
             losses = self.loss_function(outputs, targets['mask'].unsqueeze(1).to(self.device))
@@ -239,8 +248,14 @@ class Trainer:
         torch.save(self.net.state_dict(), fn_out)
         print(rf"Saved model to: {fn_out}")
 
-    def _postproc_outputs_targets(self, _, outputs, targets):
-        if self.config.instance:
+    def _postproc_outputs_targets(self, imgs, outputs, targets):
+        if self.config.tracing:
+            probas = outputs['pred_logits'].softmax(-1)[0, :, 1:]
+            keep = probas.max(-1).values > 0.7
+            return plot_traces(imgs[0][0].cpu(), outputs['pred_boxes'][0, keep].cpu(), return_image=True), \
+                   plot_traces(imgs[0][0].cpu(), targets['trace'][0].cpu(), return_image=True)
+
+        elif self.config.instance:
             return pca_project(outputs[0].cpu().numpy()), \
                    label2rgb(targets['labeled_mask'][0].numpy(), bg_label=0)
         else:

@@ -34,6 +34,32 @@ def test_instance_model(example_data_path, model_path, out_channels):
     assert outputs.shape[1] == trainer.config.out_channels
 
 
+def test_tracenet_loss(example_data_path, model_path):
+    trainer = Trainer(data_dir=example_data_path, model_path=model_path,
+                      train_dir='', val_dir='', batch_size=1, epochs=2, tracing=True, n_points=2)
+    imgs, _, targets = next(iter(trainer.train_dl))
+    imgs = imgs.to(trainer.device)
+    for key in ['trace', 'trace_class']:
+        targets[key] = [t.to(trainer.device) for t in targets[key]]
+    trainer.net.to(trainer.device).eval()
+    outputs = trainer.net(imgs)
+    outputs['pred_boxes'][0][:targets['trace'][0].shape[0]] = targets['trace'][0]
+    outputs['pred_logits'][0][:, 0] = 100
+    outputs['pred_logits'][0][:, 1] = -100
+    outputs['pred_logits'][0][:targets['trace'][0].shape[0], 0] = -100
+    outputs['pred_logits'][0][:targets['trace'][0].shape[0], 1] = 100
+    loss_dict = trainer.loss_function(outputs, targets)
+    for key in loss_dict.keys():
+        assert loss_dict[key].item() == 0
+
+
+def test_tracenet_training(example_data_path, model_path):
+    trainer = Trainer(data_dir=example_data_path, model_path=model_path,
+                      train_dir='', val_dir='', batch_size=1, epochs=2, tracing=True, n_points=2)
+    trainer.train()
+    _assert_output(trainer)
+
+
 def test_trainer_instance(example_data_path, model_path):
     trainer = Trainer(data_dir=example_data_path, model_path=model_path,
                       train_dir='', val_dir='', instance=True,

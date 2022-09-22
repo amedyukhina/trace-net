@@ -19,7 +19,7 @@ def collate_fn(batch):
     for key in ['mask', 'labeled_mask', 'padding']:
         target[key] = torch.stack([targets[i][key] for i in range(len(targets))])
 
-    for key in ['keypoints', 'point_labels', 'trace']:
+    for key in ['keypoints', 'point_labels', 'trace', 'trace_class']:
         target[key] = [targets[i][key] for i in range(len(targets))]
     return imgs1, imgs2, target
 

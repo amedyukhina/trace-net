@@ -81,7 +81,8 @@ class Filament(torch.utils.data.Dataset):
                 normalize_points(target['keypoints'], image.shape[:2]),
                 target['point_labels']
             )
-        )
+        ).float()
+        target['trace_class'] = torch.ones((target['trace'].shape[0],), dtype=torch.int64)
 
         image = torch.tensor(np.moveaxis(image, -1, 0), dtype=torch.float64)
 
