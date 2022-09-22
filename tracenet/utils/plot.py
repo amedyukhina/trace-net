@@ -13,31 +13,24 @@ CLASSES = [
 ]
 
 
-def plot_traces(img, boxes, return_image=False, size=6):
-    boxes = bounding_line_to_points(boxes)
-    boxes = denormalize_points(boxes, img.shape[-2:]).reshape(-1, 4)
+def plot_traces(img, traces, return_image=False, size=6):
+    img = normalize(img.numpy())
 
-    # normalize the image
-    img = img.numpy()
-    img = img - np.min(img)
-    img = img.transpose(1, 2, 0)
+    traces = bounding_line_to_points(traces)
+    traces = denormalize_points(traces, img.shape[-2:]).reshape(-1, 4)
 
     fig = plt.figure(figsize=(size, size))
     plt.imshow(img)
     ax = plt.gca()
     colors = COLORS * 100
-    for i in range(len(boxes)):
-        box = np.fliplr(boxes[i].reshape(-1, 2))
-        ax.add_patch(plt.Polygon(box, fill=False, color=colors[i], linewidth=3, closed=False))
+    for i in range(len(traces)):
+        trace = np.fliplr(traces[i].reshape(-1, 2))
+        ax.add_patch(plt.Polygon(trace, fill=False, color=colors[i], linewidth=3, closed=False))
     plt.axis('off')
     plt.tight_layout()
 
     if return_image:
-        canvas = FigureCanvas(fig)
-        canvas.draw()
-        plt.axis('off')
-        return np.frombuffer(canvas.tostring_rgb(),
-                             dtype='uint8').reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        return __get_canvas(fig)
     plt.show()
 
 
@@ -56,11 +49,7 @@ def plot_keypoints(img, points, labels, return_image=False, size=6):
     plt.tight_layout()
 
     if return_image:
-        canvas = FigureCanvas(fig)
-        canvas.draw()
-        plt.axis('off')
-        return np.frombuffer(canvas.tostring_rgb(),
-                             dtype='uint8').reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        return __get_canvas(fig)
     plt.show()
 
 
@@ -104,3 +93,10 @@ def normalize(img):
     img = img - img.min()
     img = img / img.max()
     return img
+
+
+def __get_canvas(fig):
+    canvas = FigureCanvas(fig)
+    canvas.draw()
+    return np.frombuffer(canvas.tostring_rgb(),
+                         dtype='uint8').reshape(fig.canvas.get_width_height()[::-1] + (3,))
