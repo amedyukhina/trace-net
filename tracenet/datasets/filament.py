@@ -5,6 +5,11 @@ import torch.utils.data
 from skimage import io
 
 from tracenet.datasets.transforms import apply_transform
+from ..utils.points import (
+    normalize_points,
+    points_to_bounding_line,
+    get_first_and_last_points
+)
 
 
 class Filament(torch.utils.data.Dataset):
@@ -65,12 +70,12 @@ class Filament(torch.utils.data.Dataset):
                             dtype=torch.int64)
         mask = torch.unique(mask, return_inverse=True)[1].reshape(mask.shape)
 
-        # target['training_points'] = points_to_bounding_line(
-        #     get_first_and_last_points(
-        #         normalize_points(target['keypoints'], image.shape[-2:]),
-        #         target['point_labels']
-        #     )
-        # )
+        target['trace'] = points_to_bounding_line(
+            get_first_and_last_points(
+                normalize_points(target['keypoints'], image.shape[-2:]),
+                target['point_labels']
+            )
+        )
 
         target['mask'] = (mask > 0) * 1
         target['labeled_mask'] = mask
