@@ -78,7 +78,7 @@ class Filament(torch.utils.data.Dataset):
 
         target['trace'] = points_to_bounding_line(
             get_first_and_last_points(
-                normalize_points(target['keypoints'], image.shape[-2:]),
+                normalize_points(target['keypoints'], image.shape[:2]),
                 target['point_labels']
             )
         )
