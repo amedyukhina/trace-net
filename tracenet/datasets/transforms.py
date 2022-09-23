@@ -8,7 +8,7 @@ from .custom_transforms import GaussianNoise, GaussianBlur, RandomBrightnessCont
 
 KEYPOINT_PARAMS = A.KeypointParams(format='yx',
                                    label_fields=['point_labels'],
-                                   remove_invisible=False,
+                                   remove_invisible=True,
                                    angle_in_degrees=True)
 
 
