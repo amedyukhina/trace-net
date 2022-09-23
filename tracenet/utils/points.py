@@ -50,6 +50,7 @@ def get_first_and_last_points(points, labels):
     npoints = []
     for lb in labels.unique():
         point = points[labels == lb]
-        npoints.append(point[0])
-        npoints.append(point[-1])
+        if len(points) > 1:
+            npoints.append(point[0])
+            npoints.append(point[-1])
     return torch.stack(npoints)
