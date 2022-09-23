@@ -63,5 +63,15 @@ class HungarianMatcher(nn.Module):
         C = C.view(bs, num_queries, -1).cpu()
 
         sizes = [len(v) for v in targets["trace"]]
-        indices = [linear_sum_assignment(c[i]) for i, c in enumerate(C.split(sizes, -1))]
+        try:
+            indices = [linear_sum_assignment(c[i]) for i, c in enumerate(C.split(sizes, -1))]
+        except ValueError:
+            print(cost_bbox)
+            print(cost_class)
+            print(cost_bbox.max(), cost_class.max())
+            print(out_prob)
+            print(out_bbox)
+            print(tgt_bbox)
+            print(tgt_ids)
+            raise ValueError
         return [(torch.as_tensor(i, dtype=torch.int64), torch.as_tensor(j, dtype=torch.int64)) for i, j in indices]
