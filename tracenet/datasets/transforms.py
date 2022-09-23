@@ -8,7 +8,8 @@ from .custom_transforms import GaussianNoise, GaussianBlur, RandomBrightnessCont
 
 KEYPOINT_PARAMS = A.KeypointParams(format='yx',
                                    label_fields=['point_labels'],
-                                   remove_invisible=True)
+                                   remove_invisible=False,
+                                   angle_in_degrees=True)
 
 
 def collate_fn(batch):
@@ -50,5 +51,5 @@ def apply_transform(transforms, target, image):
 
     image = sample2['image']
     target['keypoints'] = np.array(sample2['keypoints'])
-    target['point_labels'] = sample2['point_labels']
+    target['point_labels'] = np.array(sample2['point_labels'])
     return target, image
