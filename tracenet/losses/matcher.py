@@ -57,8 +57,8 @@ class HungarianMatcher(nn.Module):
         cost_class = -out_prob[:, tgt_ids]
 
         # Compute the L1 cost between boxes
-        cost_bbox = torch.cdist(out_bbox * self.coord_weight,
-                                tgt_bbox * self.coord_weight, p=1)
+        cost_bbox = torch.cdist(out_bbox * self.coord_weight.to(out_bbox.device),
+                                tgt_bbox * self.coord_weight.to(out_bbox.device), p=1)
 
         # Final cost matrix
         C = self.cost_bbox * cost_bbox + self.cost_class * cost_class
