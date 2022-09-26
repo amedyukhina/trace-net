@@ -79,7 +79,8 @@ class Trainer:
 
         # set loss function, validation metric, and forward pass depending on the model type
         if self.config.tracing:
-            self.loss_function = Criterion(self.config.n_classes)
+            self.loss_function = Criterion(self.config.n_classes,
+                                           coord_matching_weight=[1, 1, 0.1, 0.2])
             self.metric = None
         elif self.config.instance:
             dice_loss = DiceLoss(include_background=self.config.include_background)

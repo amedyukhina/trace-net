@@ -17,7 +17,7 @@ class Criterion(nn.Module):
         2) compute loss between each matched pair
     """
 
-    def __init__(self, num_classes, matcher=None, losses=None, eos_coef=0.1):
+    def __init__(self, num_classes, matcher=None, losses=None, eos_coef=0.1, coord_matching_weight=1):
         """ Create the criterion.
         Parameters:
             num_classes: number of object categories, omitting the special no-object category
@@ -27,7 +27,7 @@ class Criterion(nn.Module):
         """
         super().__init__()
         self.num_classes = num_classes
-        self.matcher = matcher if matcher is not None else HungarianMatcher()
+        self.matcher = matcher if matcher is not None else HungarianMatcher(coord_weight=coord_matching_weight)
         self.eos_coef = eos_coef
         self.losses = losses if losses is not None else ['labels', 'boxes', 'cardinality']
         empty_weight = torch.ones(self.num_classes + 1)
