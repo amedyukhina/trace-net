@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from .matcher import HungarianMatcher
+from .symmetric_distance import symmetric_distance
 
 
 class Criterion(nn.Module):
@@ -17,7 +18,7 @@ class Criterion(nn.Module):
         2) compute loss between each matched pair
     """
 
-    def __init__(self, num_classes, matcher=None, losses=None, eos_coef=0.1, coord_matching_weight=1):
+    def __init__(self, num_classes, matcher=None, losses=None, eos_coef=0.1):
         """ Create the criterion.
         Parameters:
             num_classes: number of object categories, omitting the special no-object category
@@ -27,7 +28,7 @@ class Criterion(nn.Module):
         """
         super().__init__()
         self.num_classes = num_classes
-        self.matcher = matcher if matcher is not None else HungarianMatcher(coord_weight=coord_matching_weight)
+        self.matcher = matcher if matcher is not None else HungarianMatcher()
         self.eos_coef = eos_coef
         self.losses = losses if losses is not None else ['labels', 'boxes', 'cardinality']
         empty_weight = torch.ones(self.num_classes + 1)
@@ -72,12 +73,10 @@ class Criterion(nn.Module):
         """
         assert 'pred_boxes' in outputs
         idx = self._get_src_permutation_idx(indices)
-        src_boxes = outputs['pred_boxes'][idx]
-        target_boxes = torch.cat([t[i] for t, (_, i) in zip(targets['trace'], indices)], dim=0)
-
-        loss_bbox = F.l1_loss(src_boxes, target_boxes, reduction='none')
-
-        losses = {'loss_trace': loss_bbox.sum() / num_boxes}
+        src_traces = outputs['pred_boxes'][idx]
+        target_traces = torch.cat([t[i] for t, (_, i) in zip(targets['trace'], indices)], dim=0)
+        loss_trace = symmetric_distance(src_traces, target_traces)
+        losses = {'loss_trace': loss_trace.sum() / num_boxes}
 
         return losses
 
