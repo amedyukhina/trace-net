@@ -23,9 +23,19 @@ def out_channels(request):
     return request.param
 
 
+@pytest.fixture(params=[
+    [8, 16, 32, 128, 256, 64],
+    [8, 16, 32, 128],
+    [8, 16, 32, 128, 256],
+    [8, 16, 32, 64, 128, 256, 32]
+])
+def n_channels(request):
+    return request.param
+
+
 def test_instance_model(example_data_path, model_path, out_channels):
     trainer = Trainer(data_dir=example_data_path, model_path=model_path,
-                      train_dir='', val_dir='', instance=True,
+                      train_dir='', val_dir='', instance=True, tracing=False,
                       backbone='monai_unet', batch_size=1, epochs=2, out_channels=out_channels)
     imgs = next(iter(trainer.train_dl))[0].to(trainer.device)
     trainer.net.to(trainer.device).eval()
@@ -34,8 +44,9 @@ def test_instance_model(example_data_path, model_path, out_channels):
     assert outputs.shape[1] == trainer.config.out_channels
 
 
-def test_tracenet_loss(example_data_path, model_path):
-    trainer = Trainer(data_dir=example_data_path, model_path=model_path,
+def test_tracenet_loss(example_data_path, model_path, n_channels, backbone):
+    trainer = Trainer(data_dir=example_data_path, model_path=model_path, n_channels=n_channels,
+                      backbone=backbone,
                       train_dir='', val_dir='', batch_size=1, epochs=2, tracing=True, n_points=2)
     imgs, _, targets = next(iter(trainer.train_dl))
     imgs = imgs.to(trainer.device)
@@ -43,7 +54,7 @@ def test_tracenet_loss(example_data_path, model_path):
         targets[key] = [t.to(trainer.device) for t in targets[key]]
     trainer.net.to(trainer.device).eval()
     outputs = trainer.net(imgs)
-    outputs['pred_boxes'][0][:targets['trace'][0].shape[0]] = targets['trace'][0]
+    outputs['pred_traces'][0][:targets['trace'][0].shape[0]] = targets['trace'][0]
     outputs['pred_logits'][0][:, 0] = 100
     outputs['pred_logits'][0][:, 1] = -100
     outputs['pred_logits'][0][:targets['trace'][0].shape[0], 0] = -100
@@ -54,7 +65,7 @@ def test_tracenet_loss(example_data_path, model_path):
 
 
 def test_tracenet_training(example_data_path, model_path):
-    trainer = Trainer(data_dir=example_data_path, model_path=model_path,
+    trainer = Trainer(data_dir=example_data_path, model_path=model_path, n_channels=[8, 16, 32, 64, 128, 32],
                       train_dir='', val_dir='', batch_size=1, epochs=2, tracing=True, n_points=2)
     trainer.train()
     _assert_output(trainer)

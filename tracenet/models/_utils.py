@@ -3,8 +3,8 @@ from monai.networks.layers import Norm
 from .backbones.csnet import CSNet
 from .backbones.monai_unet import monai_unet
 from .backbones.spoco_unet import UNet2D as SpocoBackbone
-from .detr import detr
 from .spoco import SpocoNet
+from .tracenet import TraceNet
 
 
 def get_backbone(config):
@@ -19,6 +19,7 @@ def get_backbone(config):
             spatial_dims=config.spatial_dims,
             in_channels=3, out_channels=out_channels
         )
+        feature_layer = 'model' + '.1.submodule' * (len(config.n_channels) - 1)
     elif config.backbone.lower() == 'csnet':
         net = CSNet(
             spatial_dims=config.spatial_dims,
@@ -29,6 +30,7 @@ def get_backbone(config):
             num_res_units=config.num_res_units,
             norm=Norm.BATCH,
         )
+        feature_layer = 'model' + '.1.submodule' * (len(config.n_channels) - 1)
     elif config.backbone.lower() == 'spoco_unet':
         net = SpocoBackbone(
             in_channels=3,
@@ -36,24 +38,24 @@ def get_backbone(config):
             f_maps=config.n_channels,
             layer_order="bcr"
         )
+        feature_layer = rf'encoders.{len(config.n_channels) - 1}'
     else:
         raise ValueError(rf"{config.backbone} is not a valid backbone; "
                          " valid backbones are: 'monai_unet', 'csnet', 'spoco_unet'")
 
-    return net
+    return net, feature_layer
 
 
 def get_model(config):
+    net, feature_layer = get_backbone(config)
     if config.tracing:
-        net = detr(
-            n_classes=config.n_classes,
-            n_points=2,
-            # n_points=config.n_points,
-            pretrained=True
-        )
-    else:
-        net = get_backbone(config)
-    if config.spoco:
+        net = TraceNet(backbone=net,
+                       transformer_input_layer=feature_layer,
+                       hidden_dim=config.n_channels[-1],
+                       num_classes=config.n_classes,
+                       n_points=config.n_points)
+        return net
+    elif config.spoco:
         net2 = get_backbone(config)
         return SpocoNet(net, net2, m=config.spoco_momentum)
     else:

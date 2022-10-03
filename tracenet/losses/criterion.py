@@ -30,7 +30,7 @@ class Criterion(nn.Module):
         self.num_classes = num_classes
         self.matcher = matcher if matcher is not None else HungarianMatcher()
         self.eos_coef = eos_coef
-        self.losses = losses if losses is not None else ['labels', 'boxes', 'cardinality']
+        self.losses = losses if losses is not None else ['labels', 'traces', 'cardinality']
         empty_weight = torch.ones(self.num_classes + 1)
         empty_weight[0] = self.eos_coef
         self.register_buffer('empty_weight', empty_weight)
@@ -66,14 +66,14 @@ class Criterion(nn.Module):
         losses = {'cardinality_error': card_err}
         return losses
 
-    def loss_boxes(self, outputs, targets, indices, num_boxes, **_):
+    def loss_traces(self, outputs, targets, indices, num_boxes, **_):
         """Compute the losses related to the bounding boxes, the L1 regression loss and the GIoU loss
            targets dicts must contain the key "boxes" containing a tensor of dim [nb_target_boxes, 4]
            The target boxes are expected in format (center_x, center_y, w, h), normalized by the image size.
         """
-        assert 'pred_boxes' in outputs
+        assert 'pred_traces' in outputs
         idx = self._get_src_permutation_idx(indices)
-        src_traces = outputs['pred_boxes'][idx]
+        src_traces = outputs['pred_traces'][idx]
         target_traces = torch.cat([t[i] for t, (_, i) in zip(targets['trace'], indices)], dim=0)
         loss_trace = symmetric_distance(src_traces, target_traces)
         losses = {'loss_trace': loss_trace.sum() / num_boxes}
@@ -90,7 +90,7 @@ class Criterion(nn.Module):
         loss_map = {
             'labels': self.loss_labels,
             'cardinality': self.loss_cardinality,
-            'boxes': self.loss_boxes,
+            'traces': self.loss_traces,
         }
         assert loss in loss_map, f'do you really want to compute {loss} loss?'
         return loss_map[loss](outputs, targets, indices=indices, num_boxes=num_boxes, **kwargs)

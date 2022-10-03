@@ -7,7 +7,6 @@ from skimage import io
 from tracenet.datasets.transforms import apply_transform
 from ..utils.points import (
     normalize_points,
-    points_to_bounding_line,
     get_first_and_last_points
 )
 
@@ -77,8 +76,8 @@ class Filament(torch.utils.data.Dataset):
         target['point_labels'] = torch.tensor(target['point_labels'], dtype=torch.int64)
 
         target['trace'] = get_first_and_last_points(
-                normalize_points(target['keypoints'], image.shape[:2]),
-                target['point_labels']
+            normalize_points(target['keypoints'], image.shape[:2]),
+            target['point_labels']
         ).reshape(-1, 4).float()
         target['trace_class'] = torch.ones((target['trace'].shape[0],), dtype=torch.int64)
 

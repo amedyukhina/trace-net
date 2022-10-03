@@ -261,7 +261,7 @@ class Trainer:
         if self.config.tracing:
             probas = outputs['pred_logits'].softmax(-1)[0, :, 1:]
             keep = probas.max(-1).values > 0.7
-            return plot_traces(imgs[0][0].cpu(), outputs['pred_boxes'][0, keep].cpu(), return_image=True), \
+            return plot_traces(imgs[0][0].cpu(), outputs['pred_traces'][0, keep].cpu(), return_image=True), \
                    plot_traces(imgs[0][0].cpu(), targets['trace'][0].cpu(), return_image=True)
 
         elif self.config.instance:
