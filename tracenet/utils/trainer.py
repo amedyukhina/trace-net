@@ -4,6 +4,7 @@ import json
 import os
 
 import numpy as np
+import copy
 import torch
 import wandb
 from monai.losses import DiceLoss
@@ -57,7 +58,7 @@ DEFAULT_CONFIG = dict(
 
 class Trainer:
     def __init__(self, **kwargs):
-        config = DEFAULT_CONFIG
+        config = copy.deepcopy(DEFAULT_CONFIG)
         config.update(kwargs)
         self.config = argparse.Namespace(**config)
 
