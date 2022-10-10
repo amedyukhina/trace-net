@@ -271,18 +271,20 @@ class Trainer:
         torch.save(self.net.state_dict(), fn_out)
         print(rf"Saved model to: {fn_out}")
 
-    def _postproc_outputs_targets(self, imgs, outputs, targets):
+    def _postproc_segm(self, outputs, targets):
         if self.config.tracing:
-            probas = outputs['pred_logits'].softmax(-1)[0, :, 1:]
-            keep = probas.max(-1).values > 0.7
-            return plot_traces(imgs[0][0].cpu(), outputs['pred_traces'][0, keep].cpu(), return_image=True), \
-                   plot_traces(imgs[0][0].cpu(), targets['trace'][0].cpu(), return_image=True)
-
-        elif self.config.instance:
+            outputs = outputs['backbone_out']
+        if self.config.instance:
             return pca_project(outputs[0].cpu().numpy()), \
                    label2rgb(targets['labeled_mask'][0].numpy(), bg_label=0)
         else:
             return outputs[0].argmax(0).unsqueeze(-1), targets['mask'][0].unsqueeze(-1)
+
+    def _postproc_tracing(self, imgs, outputs, targets):
+        probas = outputs['pred_logits'].softmax(-1)[0, :, 1:]
+        keep = probas.max(-1).values > 0.7
+        return plot_traces(imgs[0][0].cpu(), outputs['pred_traces'][0, keep].cpu(), return_image=True), \
+               plot_traces(imgs[0][0].cpu(), targets['trace'][0].cpu(), return_image=True)
 
     def log_images(self, iteration):
         if self.tbwriter is not None:
@@ -290,6 +292,10 @@ class Trainer:
             with torch.no_grad():
                 outputs, targets = self.forward_pass(batch)
             self.tbwriter.add_image('input', normalize(batch[0][0]), iteration, dataformats='CHW')
-            output, target = self._postproc_outputs_targets(batch[0], outputs, targets)
-            self.tbwriter.add_image('output', output, iteration, dataformats='HWC')
-            self.tbwriter.add_image('target', target, iteration, dataformats='HWC')
+            output, target = self._postproc_segm(outputs, targets)
+            self.tbwriter.add_image('output_segm', output, iteration, dataformats='HWC')
+            self.tbwriter.add_image('target_segm', target, iteration, dataformats='HWC')
+            if self.config.tracing:
+                output, target = self._postproc_tracing(batch[0], outputs, targets)
+                self.tbwriter.add_image('output_tracing', output, iteration, dataformats='HWC')
+                self.tbwriter.add_image('target_tracing', target, iteration, dataformats='HWC')
