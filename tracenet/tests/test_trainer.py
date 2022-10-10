@@ -44,6 +44,14 @@ def test_instance_model(example_data_path, model_path, out_channels):
     assert outputs.shape[1] == trainer.config.out_channels
 
 
+def test_trainer_instance(example_data_path, model_path):
+    trainer = Trainer(data_dir=example_data_path, model_path=model_path,
+                      train_dir='', val_dir='', instance=True,
+                      backbone='monai_unet', batch_size=1, epochs=2, out_channels=64)
+    trainer.train()
+    _assert_output(trainer)
+
+
 def test_tracenet_loss(example_data_path, model_path, n_channels, backbone):
     trainer = Trainer(data_dir=example_data_path, model_path=model_path, n_channels=n_channels,
                       backbone=backbone,
@@ -59,7 +67,7 @@ def test_tracenet_loss(example_data_path, model_path, n_channels, backbone):
     outputs['pred_logits'][0][:, 1] = -100
     outputs['pred_logits'][0][:targets['trace'][0].shape[0], 0] = -100
     outputs['pred_logits'][0][:targets['trace'][0].shape[0], 1] = 100
-    loss_dict = trainer.loss_function(outputs, targets)
+    loss_dict = trainer.loss_function_trace(outputs, targets)
     for key in loss_dict.keys():
         assert loss_dict[key].item() == 0
 
@@ -67,13 +75,5 @@ def test_tracenet_loss(example_data_path, model_path, n_channels, backbone):
 def test_tracenet_training(example_data_path, model_path):
     trainer = Trainer(data_dir=example_data_path, model_path=model_path, n_channels=[8, 16, 32, 64, 128, 32],
                       train_dir='', val_dir='', batch_size=1, epochs=2, tracing=True, n_points=2)
-    trainer.train()
-    _assert_output(trainer)
-
-
-def test_trainer_instance(example_data_path, model_path):
-    trainer = Trainer(data_dir=example_data_path, model_path=model_path,
-                      train_dir='', val_dir='', instance=True,
-                      backbone='monai_unet', batch_size=1, epochs=2, out_channels=64)
     trainer.train()
     _assert_output(trainer)

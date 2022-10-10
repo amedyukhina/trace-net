@@ -1,10 +1,10 @@
 import argparse
+import copy
 import datetime
 import json
 import os
 
 import numpy as np
-import copy
 import torch
 import wandb
 from monai.losses import DiceLoss
@@ -79,10 +79,7 @@ class Trainer:
                                  reduction="mean")
 
         # set loss function, validation metric, and forward pass depending on the model type
-        if self.config.tracing:
-            self.loss_function = Criterion(self.config.n_classes)
-            self.metric = None
-        elif self.config.instance:
+        if self.config.instance:
             dice_loss = DiceLoss(include_background=self.config.include_background)
             self.loss_function = ContrastiveLoss(self.config.delta_var,
                                                  self.config.delta_dist,
@@ -91,6 +88,11 @@ class Trainer:
         else:
             self.loss_function = DiceLoss(include_background=self.config.include_background,
                                           to_onehot_y=True, softmax=True)
+
+        if self.config.tracing:
+            self.loss_function_trace = Criterion(self.config.n_classes)
+        else:
+            self.loss_function_trace = None
 
         # send the model and loss to cuda if available
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -109,7 +111,8 @@ class Trainer:
         )
 
         # set loss weight coefficients
-        self.weight_dict = {'loss_ce': 1, 'loss_trace': 5}
+        self.weight_dict_trace = {'loss_ce': 1, 'loss_trace': 5}
+        self.weight_dict = {'loss_segm': 1, 'loss_tracenet': 1}
 
     def __del__(self):
         if self.log_wandb:
@@ -201,19 +204,29 @@ class Trainer:
         return outputs, targets
 
     def calculate_losses(self, outputs, targets, metric=None):
-        loss_dict = None
+        loss_dict = {}
         if self.config.tracing:
             for key in ['trace', 'trace_class']:
                 targets[key] = [t.to(self.device) for t in targets[key]]
-            loss_dict = self.loss_function(outputs, targets)
-            losses = sum(loss_dict[k] * self.weight_dict[k] for k in loss_dict.keys() if k in self.weight_dict)
-        elif self.config.instance:
-            losses = self.loss_function(outputs, targets['labeled_mask'].to(self.device), metric)
+            loss_dict = self.loss_function_trace(outputs, targets)
+            tracenet_loss = sum(loss_dict[k] * self.weight_dict_trace[k]
+                                for k in loss_dict.keys() if k in self.weight_dict_trace)
+            segm_output = outputs['backbone_out']
         else:
-            losses = self.loss_function(outputs, targets['mask'].unsqueeze(1).to(self.device))
+            tracenet_loss = None
+            segm_output = outputs
+
+        if self.config.instance:
+            segm_loss = self.loss_function(segm_output, targets['labeled_mask'].to(self.device), metric)
+        else:
+            segm_loss = self.loss_function(segm_output, targets['mask'].unsqueeze(1).to(self.device))
             if metric is not None:
-                metric(outputs.argmax(1).unsqueeze(1),
+                metric(segm_output.argmax(1).unsqueeze(1),
                        targets['mask'].unsqueeze(1).to(self.device))
+        loss_dict['loss_segm'] = segm_loss
+        if tracenet_loss is not None:
+            loss_dict['loss_tracenet'] = tracenet_loss
+        losses = sum(loss_dict[k] * self.weight_dict[k] for k in loss_dict.keys() if k in self.weight_dict)
         return losses, loss_dict
 
     def train_epoch(self):
