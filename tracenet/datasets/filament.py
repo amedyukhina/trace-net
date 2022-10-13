@@ -127,7 +127,7 @@ def df_to_points(df, cols, col_id):
         cur_df = df[df[col_id] == s].reset_index(drop=True)
         coords = cur_df[cols].values
         points.append(coords)
-        labels.append([s + 1] * len(coords))
+        labels = labels + [s + 1] * len(coords)
 
     return np.concatenate(points, axis=0), np.ravel(labels)
 
