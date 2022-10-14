@@ -42,6 +42,7 @@ DEFAULT_CONFIG = dict(
     n_points=2,
     n_channels=(16, 32, 64, 128),
     num_res_units=2,
+    dropout=0,
     spatial_dims=2,
     spoco=False,
     tracing=False,

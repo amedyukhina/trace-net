@@ -17,7 +17,8 @@ def get_backbone(config):
             n_channels=config.n_channels,
             num_res_units=config.num_res_units,
             spatial_dims=config.spatial_dims,
-            in_channels=3, out_channels=out_channels
+            in_channels=3, out_channels=out_channels,
+            dropout=config.dropout
         )
         feature_layer = 'model' + '.1.submodule' * (len(config.n_channels) - 1)
     elif config.backbone.lower() == 'csnet':
@@ -29,6 +30,7 @@ def get_backbone(config):
             strides=(2,) * (len(config.n_channels) - 1),
             num_res_units=config.num_res_units,
             norm=Norm.BATCH,
+            dropout=config.dropout
         )
         feature_layer = 'model' + '.1.submodule' * (len(config.n_channels) - 1)
     elif config.backbone.lower() == 'spoco_unet':

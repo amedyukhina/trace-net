@@ -27,6 +27,7 @@ if __name__ == '__main__':
     parser.add_argument('-bs', '--batch-size', type=int, default=2,
                         help='Batch size')
     parser.add_argument('-lr', '--lr', type=float, default=0.0001, help='Starting learning rate')
+    parser.add_argument('-dr', '--dropout', type=float, default=0.0, help='Dropout rate')
     parser.add_argument('-wd', '--weight-decay', type=float, default=0.0005,
                         help='Weight decay for Adam optimizer')
     parser.add_argument('-fr', '--factor', type=float, default=0.1,
@@ -37,7 +38,7 @@ if __name__ == '__main__':
                         help='Number of channels in each UNet layers, separated by ","')
     parser.add_argument('-oc', '--out-channels', type=int, default=16,
                         help='Number of output channels (embedding space) for instance segmentation')
-    parser.add_argument('-ru', '--num-res-units', type=int, default=1,
+    parser.add_argument('-ru', '--num-res-units', type=int, default=2,
                         help='Number of residual units in each block of Unet and CSNet')
     parser.add_argument('-wp', '--wandb-project', type=str, default='',
                         help='wandb project name')
