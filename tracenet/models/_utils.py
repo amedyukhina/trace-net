@@ -1,7 +1,7 @@
 from monai.networks.layers import Norm
+from monai.networks.nets import UNet, AttentionUnet
 
 from .backbones.csnet import CSNet
-from .backbones.monai_unet import monai_unet
 from .backbones.spoco_unet import UNet2D as SpocoBackbone
 from .spoco import SpocoNet
 from .tracenet import TraceNet
@@ -13,11 +13,24 @@ def get_backbone(config):
     else:
         out_channels = config.n_classes + 1
     if config.backbone.lower() == 'monai_unet':
-        net = monai_unet(
-            n_channels=config.n_channels,
-            num_res_units=config.num_res_units,
+        net = UNet(
             spatial_dims=config.spatial_dims,
-            in_channels=3, out_channels=out_channels,
+            in_channels=3,
+            out_channels=out_channels,
+            channels=config.n_channels,
+            strides=(2,) * (len(config.n_channels) - 1),
+            num_res_units=config.num_res_units,
+            norm=Norm.BATCH,
+            dropout=config.dropout
+        )
+        feature_layer = 'model' + '.1.submodule' * (len(config.n_channels) - 1)
+    elif config.backbone.lower() == 'attention_unet':
+        net = AttentionUnet(
+            spatial_dims=config.spatial_dims,
+            in_channels=3,
+            out_channels=out_channels,
+            channels=config.n_channels,
+            strides=(2,) * (len(config.n_channels) - 1),
             dropout=config.dropout
         )
         feature_layer = 'model' + '.1.submodule' * (len(config.n_channels) - 1)

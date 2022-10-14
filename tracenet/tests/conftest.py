@@ -45,7 +45,7 @@ def model_path():
     shutil.rmtree(path)
 
 
-@pytest.fixture(scope='module', params=['monai_unet', 'csnet', 'spoco_unet'])
+@pytest.fixture(scope='module', params=['monai_unet', 'csnet', 'spoco_unet', 'attention_unet'])
 def backbone(request):
     return request.param
 
