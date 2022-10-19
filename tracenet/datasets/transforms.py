@@ -53,3 +53,27 @@ def apply_transform(transforms, target, image):
     target['keypoints'] = np.array(sample2['keypoints'])
     target['point_labels'] = np.array(sample2['point_labels'])
     return target, image
+
+
+def reshape_image_for_transformer(img, n):
+    """
+    Reshapes the image for a spatial transformer from size NxN to C x n x n.
+    The input image size N must be a multiple of the new size n.
+
+    Parameters
+    ----------
+    img : torch.tensor
+        Input image
+    n : int
+        New image size
+
+    Returns
+    -------
+
+    """
+    s = int(img.shape[-1] / n)
+    img = torch.moveaxis(img.reshape(img.shape[:-2] + (n, s, n, s)), -3, -2).reshape(img.shape[:-2] + (n, n, -1))
+    img = torch.moveaxis(img, -1, -3)
+    if len(img.shape) > 4:
+        img = img.reshape((img.shape[0], -1) + img.shape[-2:])
+    return img
