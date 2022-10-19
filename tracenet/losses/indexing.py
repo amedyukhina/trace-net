@@ -4,10 +4,10 @@ from torch.nn import functional as F
 
 
 def diff_index(x, idx):
-    x = F.pad(x.unsqueeze(0).unsqueeze(0), pad=(0, 1, 0, 1), mode='reflect').squeeze(0).squeeze(0)
-    i0 = idx[0].floor().detach()
+    x = F.pad(x.unsqueeze(0).unsqueeze(0), pad=(0, 2, 0, 2), mode='reflect').squeeze(0).squeeze(0)
+    i0 = (idx[0] + 0.5).floor().detach()
     i1 = i0 + 1
-    j0 = idx[1].floor().detach()
+    j0 = (idx[1] + 0.5).floor().detach()
     j1 = j0 + 1
 
     # index along first axis
