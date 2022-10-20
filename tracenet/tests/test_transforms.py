@@ -4,9 +4,9 @@ import torch
 from tracenet.datasets.transforms import reshape_image_for_transformer
 
 
-@pytest.fixture(params=[([256, 256], 16, 16*16),
-                        ([2, 3, 16, 16], 4, 4*4*3),
-                        ([3, 16, 16], 4, 4*4)])
+@pytest.fixture(params=[([256, 256], 16, 16 * 16),
+                        ([2, 3, 16, 16], 4, 4 * 4 * 3),
+                        ([3, 16, 16], 4, 4 * 4)])
 def test_image(request):
     shape, n, nch = request.param
     img = torch.ones(shape)
