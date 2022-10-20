@@ -6,7 +6,7 @@ from torchvision.transforms.functional import gaussian_blur
 
 class PointLoss(torch.nn.Module):
 
-    def __init__(self, dist_push_weight=1., intensity_weight=1., mindist=0.5, maxval=255):
+    def __init__(self, dist_push_weight=1., intensity_weight=1., mindist=0.05, maxval=255):
         super().__init__()
         self.dist_push_weight = dist_push_weight
         self.intensity_weight = intensity_weight
@@ -14,9 +14,9 @@ class PointLoss(torch.nn.Module):
         self.maxval = maxval
 
     def forward(self, trace, img):
-        dist_push_loss = torch.stack([dist_push(tr, self.mindist) for tr in trace]).sum()
+        dist_push_loss = torch.stack([dist_push(tr, self.mindist) for tr in trace]).mean()
         imgf = gaussian_blur(img, kernel_size=[11]*2)
-        int_loss = torch.stack([intensity_loss(im, tr, self.maxval) for im, tr in zip(imgf, trace)]).sum()
+        int_loss = torch.stack([intensity_loss(im, tr, self.maxval) for im, tr in zip(imgf, trace)]).mean()
         return dist_push_loss * self.dist_push_weight + int_loss * self.intensity_weight
 
 
@@ -45,10 +45,10 @@ def diff_index(x, idx):
 
 def intensity_loss(img, trace, maxval=255):
     intensity = diff_index(img, (trace * (torch.tensor(img.shape).to(img.device).unsqueeze(0))).transpose(0, 1))
-    return (maxval - intensity).sum()
+    return (maxval - intensity).mean()
 
 
 def dist_push(trace, mindist=0.05):
     ind = np.array([(i, j) for i in range(len(trace)) for j in range(i + 1, len(trace))]).transpose()
     dist = torch.cdist(trace, trace)[tuple(ind)]
-    return torch.clamp(mindist - dist, min=0).sum()
+    return torch.clamp(mindist - dist, min=0).mean()
