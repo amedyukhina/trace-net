@@ -6,7 +6,7 @@ from torchvision.transforms.functional import gaussian_blur
 
 class PointLoss(torch.nn.Module):
 
-    def __init__(self, dist_push_weight=1., intensity_weight=1., mindist=0.05, maxval=255):
+    def __init__(self, dist_push_weight=10., intensity_weight=1., mindist=0.05, maxval=255):
         super().__init__()
         self.dist_push_weight = dist_push_weight
         self.intensity_weight = intensity_weight
