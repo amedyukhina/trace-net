@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from torch.nn import functional as F
+from torchvision.transforms.functional import gaussian_blur
 
 
 class PointLoss(torch.nn.Module):
@@ -14,7 +15,8 @@ class PointLoss(torch.nn.Module):
 
     def forward(self, trace, img):
         dist_push_loss = torch.stack([dist_push(tr, self.mindist) for tr in trace]).sum()
-        int_loss = torch.stack([intensity_loss(im, tr, self.maxval) for im, tr in zip(img, trace)]).sum()
+        imgf = gaussian_blur(img, kernel_size=[11]*2)
+        int_loss = torch.stack([intensity_loss(im, tr, self.maxval) for im, tr in zip(imgf, trace)]).sum()
         return dist_push_loss * self.dist_push_weight + int_loss * self.intensity_weight
 
 
