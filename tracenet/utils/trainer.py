@@ -16,8 +16,9 @@ from tqdm import tqdm
 from .loader import get_loaders
 from ..losses.contrastive import ContrastiveLoss
 from ..losses.criterion import Criterion
+from ..losses.indexing import PointLoss
 from ..models import get_model
-from ..utils.plot import pca_project, normalize, plot_traces
+from ..utils.plot import pca_project, normalize, plot_traces, plot_points
 
 DEFAULT_CONFIG = dict(
     backbone='monai_unet',
@@ -89,6 +90,10 @@ class Trainer:
         else:
             self.loss_function = DiceLoss(include_background=self.config.include_background,
                                           to_onehot_y=True, softmax=True)
+
+        if self.config.backbone.lower() == 'transformer':
+            self.loss_function = PointLoss(maxval=1.)
+            self.metric = None
 
         if self.config.tracing:
             self.loss_function_trace = Criterion(self.config.n_classes)
@@ -200,34 +205,39 @@ class Trainer:
         if self.config.spoco:
             outputs = self.net(imgs1.to(self.device),
                                imgs2.to(self.device))
+        elif self.config.backbone.lower() == 'transformer':
+            outputs = self.net(targets['mask'].to(self.device))
         else:
             outputs = self.net(imgs1.to(self.device))
         return outputs, targets
 
     def calculate_losses(self, outputs, targets, metric=None):
         loss_dict = {}
-        if self.config.tracing:
-            for key in ['trace', 'trace_class']:
-                targets[key] = [t.to(self.device) for t in targets[key]]
-            loss_dict = self.loss_function_trace(outputs, targets)
-            tracenet_loss = sum(loss_dict[k] * self.weight_dict_trace[k]
-                                for k in loss_dict.keys() if k in self.weight_dict_trace)
-            segm_output = outputs['backbone_out']
+        if self.config.backbone.lower() == 'transformer':
+            losses = self.loss_function(outputs, targets['mask'].float().to(self.device))
         else:
-            tracenet_loss = None
-            segm_output = outputs
+            if self.config.tracing:
+                for key in ['trace', 'trace_class']:
+                    targets[key] = [t.to(self.device) for t in targets[key]]
+                loss_dict = self.loss_function_trace(outputs, targets)
+                tracenet_loss = sum(loss_dict[k] * self.weight_dict_trace[k]
+                                    for k in loss_dict.keys() if k in self.weight_dict_trace)
+                segm_output = outputs['backbone_out']
+            else:
+                tracenet_loss = None
+                segm_output = outputs
 
-        if self.config.instance:
-            segm_loss = self.loss_function(segm_output, targets['labeled_mask'].to(self.device), metric)
-        else:
-            segm_loss = self.loss_function(segm_output, targets['mask'].unsqueeze(1).to(self.device))
-            if metric is not None:
-                metric(segm_output.argmax(1).unsqueeze(1),
-                       targets['mask'].unsqueeze(1).to(self.device))
-        loss_dict['loss_segm'] = segm_loss
-        if tracenet_loss is not None:
-            loss_dict['loss_tracenet'] = tracenet_loss
-        losses = sum(loss_dict[k] * self.weight_dict[k] for k in loss_dict.keys() if k in self.weight_dict)
+            if self.config.instance:
+                segm_loss = self.loss_function(segm_output, targets['labeled_mask'].to(self.device), metric)
+            else:
+                segm_loss = self.loss_function(segm_output, targets['mask'].unsqueeze(1).to(self.device))
+                if metric is not None:
+                    metric(segm_output.argmax(1).unsqueeze(1),
+                           targets['mask'].unsqueeze(1).to(self.device))
+            loss_dict['loss_segm'] = segm_loss
+            if tracenet_loss is not None:
+                loss_dict['loss_tracenet'] = tracenet_loss
+            losses = sum(loss_dict[k] * self.weight_dict[k] for k in loss_dict.keys() if k in self.weight_dict)
         return losses, loss_dict
 
     def train_epoch(self):
@@ -292,11 +302,16 @@ class Trainer:
             batch = next(iter(self.val_dl))
             with torch.no_grad():
                 outputs, targets = self.forward_pass(batch)
-            self.tbwriter.add_image('input', normalize(batch[0][0]), iteration, dataformats='CHW')
-            output, target = self._postproc_segm(outputs, targets)
-            self.tbwriter.add_image('output_segm', output, iteration, dataformats='HWC')
-            self.tbwriter.add_image('target_segm', target, iteration, dataformats='HWC')
-            if self.config.tracing:
-                output, target = self._postproc_tracing(batch[0], outputs, targets)
-                self.tbwriter.add_image('output_tracing', output, iteration, dataformats='HWC')
-                self.tbwriter.add_image('target_tracing', target, iteration, dataformats='HWC')
+
+            if self.config.backbone.lower() == 'transformer':
+                img = plot_points(batch[0][0][0].cpu(), outputs[0].cpu(), return_image=True)
+                self.tbwriter.add_image('output', img, iteration, dataformats='HWC')
+            else:
+                self.tbwriter.add_image('input', normalize(batch[0][0]), iteration, dataformats='CHW')
+                output, target = self._postproc_segm(outputs, targets)
+                self.tbwriter.add_image('output_segm', output, iteration, dataformats='HWC')
+                self.tbwriter.add_image('target_segm', target, iteration, dataformats='HWC')
+                if self.config.tracing:
+                    output, target = self._postproc_tracing(batch[0], outputs, targets)
+                    self.tbwriter.add_image('output_tracing', output, iteration, dataformats='HWC')
+                    self.tbwriter.add_image('target_tracing', target, iteration, dataformats='HWC')

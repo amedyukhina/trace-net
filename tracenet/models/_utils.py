@@ -5,6 +5,7 @@ from .backbones.csnet import CSNet
 from .backbones.spoco_unet import UNet2D as SpocoBackbone
 from .spoco import SpocoNet
 from .tracenet import TraceNet
+from .transformer import Transformer
 
 
 def get_backbone(config):
@@ -62,16 +63,22 @@ def get_backbone(config):
 
 
 def get_model(config):
-    net, feature_layer = get_backbone(config)
-    if config.tracing:
-        net = TraceNet(backbone=net,
-                       transformer_input_layer=feature_layer,
-                       hidden_dim=config.n_channels[-1],
-                       num_classes=config.n_classes,
-                       n_points=config.n_points)
+    if config.backbone.lower() == 'transformer':
+        imgsize = 16
+        hidden_dim = int((config.maxsize / imgsize) ** 2)
+        net = Transformer(hidden_dim=hidden_dim, imgsize=imgsize, n_points=1)
         return net
-    elif config.spoco:
-        net2 = get_backbone(config)
-        return SpocoNet(net, net2, m=config.spoco_momentum)
     else:
-        return net
+        net, feature_layer = get_backbone(config)
+        if config.tracing:
+            net = TraceNet(backbone=net,
+                           transformer_input_layer=feature_layer,
+                           hidden_dim=config.n_channels[-1],
+                           num_classes=config.n_classes,
+                           n_points=config.n_points)
+            return net
+        elif config.spoco:
+            net2 = get_backbone(config)
+            return SpocoNet(net, net2, m=config.spoco_momentum)
+        else:
+            return net
