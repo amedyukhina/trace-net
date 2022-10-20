@@ -35,6 +35,25 @@ def plot_traces(img, traces, return_image=False, size=6):
     plt.show()
 
 
+def plot_points(img, points, return_image=False, size=6):
+    img = normalize(img.numpy())
+    points = points.numpy() * np.array(img.shape)
+
+    fig = plt.figure(figsize=(size, size))
+    plt.imshow(img)
+    ax = plt.gca()
+    colors = COLORS * 100
+    for i in range(len(points)):
+        point = np.fliplr(points[i].reshape(-1, 2)).ravel()
+        ax.add_patch(plt.Circle(point, radius=1, fill=False, color=colors[i]))
+    plt.axis('off')
+    plt.tight_layout()
+
+    if return_image:
+        return __get_canvas(fig)
+    plt.show()
+
+
 def plot_keypoints(img, points, labels, return_image=False, size=6):
     # normalize the image
     img = normalize(img.numpy())
