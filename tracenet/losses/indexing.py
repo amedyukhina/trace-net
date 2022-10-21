@@ -15,7 +15,7 @@ class PointLoss(torch.nn.Module):
 
     def forward(self, trace, img):
         dist_push_loss = torch.stack([dist_push(tr, self.mindist) for tr in trace]).mean()
-        imgf = gaussian_blur(img, kernel_size=[11]*2)
+        imgf = gaussian_blur(img, kernel_size=[101] * 2) + gaussian_blur(img, kernel_size=[11] * 2)
         int_loss = torch.stack([intensity_loss(im, tr, self.maxval) for im, tr in zip(imgf, trace)]).mean()
         return dist_push_loss * self.dist_push_weight + int_loss * self.intensity_weight
 
