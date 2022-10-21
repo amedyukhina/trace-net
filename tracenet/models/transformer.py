@@ -1,18 +1,32 @@
-import math
-
 import torch
 from torch import nn
 
 from .blocks.mlp import MLP
 from .tracenet import PositionEmbeddingSine
-from ..datasets.transforms import reshape_image_for_transformer
 
 
 class Transformer(nn.Module):
 
-    def __init__(self, hidden_dim, imgsize=16, n_points=2, num_queries=100, nheads=8,
+    def __init__(self, hidden_dim, n_points=2, num_queries=100, nheads=8,
                  num_encoder_layers=6, num_decoder_layers=6):
         super().__init__()
+
+        self.input_embed = nn.Sequential(
+            nn.Conv2d(1, 16, kernel_size=(4, 4), stride=(4, 4)),
+            nn.PReLU(),
+            nn.Dropout(0.2),
+            nn.BatchNorm2d(16),
+            nn.Conv2d(16, 64, kernel_size=(4, 4), stride=(4, 4)),
+            nn.PReLU(),
+            nn.Dropout(0.2),
+            nn.BatchNorm2d(64),
+            nn.Conv2d(64, 512, kernel_size=(2, 2), stride=(2, 2)),
+            nn.PReLU(),
+            nn.Dropout(0.2),
+            nn.BatchNorm2d(512),
+            nn.Conv2d(512, hidden_dim, (1, 1)),
+
+        )
 
         self.transformer = nn.Transformer(hidden_dim, nheads, num_encoder_layers, num_decoder_layers, batch_first=True)
         self.trace_embed = MLP(hidden_dim, hidden_dim, n_points * 2, 3)
@@ -24,13 +38,8 @@ class Transformer(nn.Module):
         self.position_encodings = PositionEmbeddingSine(torch.div(hidden_dim, 2, rounding_mode='trunc'),
                                                         normalize=True)
 
-        self.imgsize = imgsize
-        self.hidden_dim = hidden_dim
-
     def forward(self, x):
-        if not x.shape[-1] == self.imgsize * math.sqrt(self.hidden_dim):
-            raise ValueError(rf"Input image shape must be {self.imgsize * math.sqrt(self.hidden_dim)}")
-        x = reshape_image_for_transformer(x, self.imgsize)
+        x = self.input_embed(x)
         pos = self.position_encodings(x)
         tr_out = self.transformer((pos + x).flatten(-2, -1).transpose(-1, -2),
                                   self.query_pos.unsqueeze(0).repeat(x.shape[0], 1, 1))

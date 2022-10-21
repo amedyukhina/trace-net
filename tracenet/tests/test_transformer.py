@@ -15,11 +15,11 @@ def _assert_output(trainer):
 def test_transformer_model(example_data_path):
     loader = get_loaders(example_data_path, train_dir='', val_dir='', batch_size=1, mean_std=(3, 0.4))[0]
     _, _, target = next(iter(loader))
-    mask = target['mask']
+    mask = target['mask'].unsqueeze(1).float()
     net = Transformer(1024, n_points=1).cuda()
     output = net(mask.cuda()).cpu()
     loss_fn = PointLoss(maxval=mask.max())
-    loss_fn(output.cuda(), mask.float().cuda())
+    loss_fn(output.cuda(), mask.squeeze(1).cuda())
 
 
 def test_trainsformer_training(example_data_path, model_path):

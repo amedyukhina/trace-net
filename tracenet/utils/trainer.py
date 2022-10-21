@@ -206,7 +206,7 @@ class Trainer:
             outputs = self.net(imgs1.to(self.device),
                                imgs2.to(self.device))
         elif self.config.backbone.lower() == 'transformer':
-            outputs = self.net(targets['mask'].to(self.device))
+            outputs = self.net(targets['mask'].unsqueeze(1).float().to(self.device))
         else:
             outputs = self.net(imgs1.to(self.device))
         return outputs, targets

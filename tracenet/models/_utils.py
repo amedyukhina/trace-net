@@ -64,9 +64,7 @@ def get_backbone(config):
 
 def get_model(config):
     if config.backbone.lower() == 'transformer':
-        imgsize = 16
-        hidden_dim = int((config.maxsize / imgsize) ** 2)
-        net = Transformer(hidden_dim=hidden_dim, imgsize=imgsize, n_points=1)
+        net = Transformer(hidden_dim=256, n_points=1)
         return net
     else:
         net, feature_layer = get_backbone(config)
