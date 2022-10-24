@@ -1,5 +1,5 @@
 from monai.networks.layers import Norm
-from monai.networks.nets import UNet, AttentionUnet
+from monai.networks.nets import UNet, AttentionUnet, UNETR
 
 from .backbones.csnet import CSNet
 from .backbones.spoco_unet import UNet2D as SpocoBackbone
@@ -35,6 +35,18 @@ def get_backbone(config):
             dropout=config.dropout
         )
         feature_layer = 'model' + '.1.submodule' * (len(config.n_channels) - 1)
+    elif config.backbone.lower() == 'unetr':
+        net = UNETR(
+            spatial_dims=config.spatial_dims,
+            in_channels=3,
+            out_channels=out_channels,
+            img_size=config.maxsize,
+            feature_size=16,
+            norm_name='batch',
+            hidden_size=256,
+            num_heads=8
+        )
+        feature_layer = ''
     elif config.backbone.lower() == 'csnet':
         net = CSNet(
             spatial_dims=config.spatial_dims,

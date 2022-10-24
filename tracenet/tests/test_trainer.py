@@ -18,6 +18,13 @@ def test_trainer(example_data_path, model_path, backbone):
     _assert_output(trainer)
 
 
+def test_unetr(example_data_path, model_path):
+    trainer = Trainer(data_dir=example_data_path, model_path=model_path, train_dir='', val_dir='',
+                      backbone='unetr', batch_size=1, epochs=2)
+    trainer.train()
+    _assert_output(trainer)
+
+
 @pytest.fixture(params=[2, 32, 64, 128])
 def out_channels(request):
     return request.param
