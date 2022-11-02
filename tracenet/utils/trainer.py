@@ -17,6 +17,7 @@ from .loader import get_loaders
 from ..losses.contrastive import ContrastiveLoss
 from ..losses.criterion import Criterion
 from ..losses.indexing import PointLoss
+from ..losses.cldice import SoftDiceClDice
 from ..models import get_model
 from ..utils.plot import pca_project, normalize, plot_traces, plot_points
 
@@ -54,6 +55,7 @@ DEFAULT_CONFIG = dict(
     delta_dist=3.,
     kernel_threshold=0.9,
     include_background=False,
+    cldice_alpha=0.5,
     wandb_api_key_file='path_to_my_wandb_api_key_file'
 )
 
@@ -88,8 +90,9 @@ class Trainer:
                                                  self.config.kernel_threshold,
                                                  instance_loss=dice_loss)
         else:
-            self.loss_function = DiceLoss(include_background=self.config.include_background,
-                                          to_onehot_y=True, softmax=True)
+            self.loss_function = SoftDiceClDice(alpha=self.config.cldice_alpha,
+                                                include_background=self.config.include_background,
+                                                to_onehot_y=True, softmax=True)
 
         if self.config.backbone.lower() == 'transformer':
             self.loss_function = PointLoss(maxval=1.)
@@ -230,7 +233,7 @@ class Trainer:
             if self.config.instance:
                 segm_loss = self.loss_function(segm_output, targets['labeled_mask'].to(self.device), metric)
             else:
-                segm_loss = self.loss_function(segm_output, targets['mask'].unsqueeze(1).to(self.device))
+                segm_loss = self.loss_function(segm_output, targets['mask'].to(self.device))
                 if metric is not None:
                     metric(segm_output.argmax(1).unsqueeze(1),
                            targets['mask'].unsqueeze(1).to(self.device))

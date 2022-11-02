@@ -27,6 +27,7 @@ if __name__ == '__main__':
     parser.add_argument('-bs', '--batch-size', type=int, default=2,
                         help='Batch size')
     parser.add_argument('-lr', '--lr', type=float, default=0.0001, help='Starting learning rate')
+    parser.add_argument('-al', '--cldice-alpha', type=float, default=0.5, help='Weight parameter for clDice')
     parser.add_argument('-dr', '--dropout', type=float, default=0.0, help='Dropout rate')
     parser.add_argument('-wd', '--weight-decay', type=float, default=0.0005,
                         help='Weight decay for Adam optimizer')
