@@ -121,7 +121,7 @@ class Trainer:
 
         # set loss weight coefficients
         self.weight_dict_trace = {'loss_ce': 1, 'loss_trace': 5}
-        self.weight_dict = {'loss_segm': 1, 'loss_tracenet': 1}
+        self.weight_dict = {'loss_segm': 1., 'loss_tracenet': 1.}
 
     def __del__(self):
         if self.log_wandb:
