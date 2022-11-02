@@ -42,8 +42,6 @@ class Filament(torch.utils.data.Dataset):
         if len(image.shape) > 2:
             image = np.max(image, axis=-1)
         image = (image - self.mean) / self.std
-        # image = image - image.min()
-        # image = image / image.max()
 
         if np.max(image.shape) > self.maxsize:
             raise ValueError(rf"Image size must be less than or equal to {self.maxsize};"
