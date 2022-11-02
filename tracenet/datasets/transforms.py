@@ -36,8 +36,8 @@ def get_train_transform():
 def get_intensity_transform():
     return transforms.Compose([
         GaussianBlur([1.5, 2], 0.5),
-        GaussianNoise([0.5, 0.52], 1),
-        RandomBrightnessContrast(brightness=(-0.1, 0.1), contrast=(0.8, 1.2), probability=0.5),
+        GaussianNoise([0.1, 0.12], 0.3),
+        # RandomBrightnessContrast(brightness=(-0.1, 0.1), contrast=(0.8, 1.2), probability=0.5),
     ])
 
 
