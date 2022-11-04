@@ -20,6 +20,7 @@ from ..losses.indexing import PointLoss
 from ..losses.cldice import SoftDiceClDice
 from ..models import get_model
 from ..utils.plot import pca_project, normalize, plot_traces, plot_points
+from ..datasets.points import Points
 
 DEFAULT_CONFIG = dict(
     backbone='monai_unet',
@@ -97,6 +98,7 @@ class Trainer:
         if self.config.backbone.lower() == 'transformer':
             self.loss_function = PointLoss(maxval=1.)
             self.metric = None
+            self.train_dl, self.val_dl = get_loaders(dataset=Points, **config)
 
         if self.config.tracing:
             self.loss_function_trace = Criterion(self.config.n_classes)
