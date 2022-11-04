@@ -98,6 +98,8 @@ class Trainer:
         if self.config.backbone.lower() == 'transformer':
             self.loss_function = PointLoss(maxval=1.)
             self.metric = None
+            config['maxsize'] = 16
+            config['n_points'] = 10
             self.train_dl, self.val_dl = get_loaders(dataset=Points, **config)
 
         if self.config.tracing:
