@@ -73,7 +73,9 @@ def plot_keypoints(img, points, labels, return_image=False, size=6):
     plt.show()
 
 
-def show_imgs(imgs, s=4, norm=True):
+def show_imgs(imgs, s=4, norm=True, titles=None):
+    if titles is None:
+        titles = [''] * len(imgs)
     fig, ax = plt.subplots(1, len(imgs), figsize=(len(imgs) * s, s))
     for i, img in enumerate(imgs):
         plt.sca(ax[i])
@@ -81,6 +83,8 @@ def show_imgs(imgs, s=4, norm=True):
         if norm:
             im = normalize(im)
         io.imshow(im)
+        plt.sca(ax[i])
+        plt.title(titles[i])
 
 
 def pca_project(embeddings):
