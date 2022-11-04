@@ -8,7 +8,7 @@ from .blocks.pos_encodings import PositionEmbeddingSine
 
 class Transformer(nn.Module):
 
-    def __init__(self, hidden_dim, n_points=2, num_queries=100, nheads=8,
+    def __init__(self, hidden_dim, n_points=2, num_queries=10, nheads=8,
                  num_encoder_layers=6, num_decoder_layers=6):
         super().__init__()
 
