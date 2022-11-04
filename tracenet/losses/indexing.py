@@ -6,16 +6,18 @@ from torchvision.transforms.functional import gaussian_blur
 
 class PointLoss(torch.nn.Module):
 
-    def __init__(self, dist_push_weight=10., intensity_weight=1., mindist=0.05, maxval=255):
+    def __init__(self, dist_push_weight=10., intensity_weight=1., mindist=0.05, maxval=255,
+                 kernel_size=5):
         super().__init__()
         self.dist_push_weight = dist_push_weight
         self.intensity_weight = intensity_weight
         self.mindist = mindist
         self.maxval = maxval
+        self.kernel_size = np.ravel([kernel_size])
 
     def forward(self, trace, img):
         dist_push_loss = torch.stack([dist_push(tr, self.mindist) for tr in trace]).mean()
-        imgf = gaussian_blur(img, kernel_size=[101] * 2) + gaussian_blur(img, kernel_size=[11] * 2)
+        imgf = torch.stack([gaussian_blur(img, kernel_size=[ks] * 2) for ks in self.kernel_size]).sum(0)
         int_loss = torch.stack([intensity_loss(im, tr, self.maxval) for im, tr in zip(imgf, trace)]).mean()
         return dist_push_loss * self.dist_push_weight + int_loss * self.intensity_weight
 

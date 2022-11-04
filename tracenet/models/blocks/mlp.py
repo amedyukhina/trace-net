@@ -1,5 +1,6 @@
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 """
-Copied from https://github.com/facebookresearch/detr/blob/main/models/detr.py
+Copy-paste from https://github.com/facebookresearch/detr/blob/main/models/detr.py
 """
 import torch.nn.functional as F
 from torch import nn
