@@ -13,9 +13,10 @@ from tracenet.datasets.transforms import (
 
 def get_loaders(data_dir, img_dir='img', gt_dir='gt', train_dir='train', val_dir='val',
                 train_transform=None, valid_transform=None, intensity_transform=None, shuffle=True,
-                maxsize=512, n_points=2, batch_size=2, instance_ratio=1, mean_std=(0, 1), **_):
+                maxsize=512, n_points=2, batch_size=2, instance_ratio=1, mean_std=(0, 1), dataset=None, **_):
     # Get Transforms
-    dataset = Filament
+    if dataset is None:
+        dataset = Filament
     transforms = [
         dict(transforms=get_train_transform() if train_transform is None else train_transform,
              intensity_transforms=get_intensity_transform() if intensity_transform is None

@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 import torch
 
+from tracenet.datasets.points import Points
 from tracenet.datasets.transforms import KEYPOINT_PARAMS
 from tracenet.utils.loader import get_loaders
 
@@ -27,6 +28,12 @@ def instance_ratio(request):
 
 def test_loader(example_data_path, dl_index):
     loader = get_loaders(example_data_path, train_dir='', val_dir='', batch_size=1, mean_std=(3, 0.4))[dl_index]
+    get_batch_and_assert(loader)
+
+
+def test_point_loader(example_data_path):
+    loader = get_loaders(example_data_path, train_dir='', val_dir='', batch_size=1, mean_std=(3, 0.4),
+                         maxsize=16, n_points=10, dataset=Points)[0]
     get_batch_and_assert(loader)
 
 
