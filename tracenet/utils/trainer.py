@@ -33,6 +33,7 @@ DEFAULT_CONFIG = dict(
     factor=0.1,
     patience=10,
     model_path='model',
+    pretrained_model_path=None,
     log_wandb=False,
     log_tensorboard=True,
     wandb_project='Test',
@@ -129,11 +130,13 @@ class Trainer:
         # set loss weight coefficients
         self.weight_dict_trace = {'loss_ce': 1, 'loss_trace': 5}
         self.weight_dict = {'loss_segm': 1., 'loss_tracenet': 1.}
+        self.trained = False
 
     def __del__(self):
         if self.log_wandb:
             wandb.finish()
-        self.save_model()
+        if self.trained:
+            self.save_model()
 
     def _init_project(self):
         if self.log_wandb:
@@ -167,6 +170,7 @@ class Trainer:
             self.tbwriter.add_scalar(key, value, step)
 
     def train(self):
+        self.trained = True
         best_loss = 10 ** 10
         for epoch in range(self.config.epochs):
             # training pass

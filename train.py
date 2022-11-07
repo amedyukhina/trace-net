@@ -22,6 +22,8 @@ if __name__ == '__main__':
                         help='Mean and standard deviation of the dataset, for normalization, separated by ","')
     parser.add_argument('-mp', '--model-path', type=str,
                         help='Directory for model checkpoints', default='model')
+    parser.add_argument('-mpp', '--pretrained-model-path', type=str,
+                        help='Pretrained model weights', default=None)
     parser.add_argument('-e', '--epochs', type=int, default=20,
                         help='Number of training epochs')
     parser.add_argument('-bs', '--batch-size', type=int, default=2,

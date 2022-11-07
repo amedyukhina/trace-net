@@ -80,3 +80,35 @@ def test_tracenet_training(example_data_path, model_path):
                       train_dir='', val_dir='', batch_size=1, epochs=2, tracing=True, n_points=2)
     trainer.train()
     _assert_output(trainer)
+
+
+def test_tracenet_pretraining(example_data_path, model_path):
+    # pretrain
+    print('Pretrain')
+    trainer = Trainer(data_dir=example_data_path, model_path=model_path + '/backbone',
+                      n_channels=[8, 16, 32, 64, 128, 32], backbone='unetr',
+                      train_dir='', val_dir='', batch_size=1, epochs=2, tracing=False, n_points=2)
+    trainer.train()
+    loss_fn = trainer.loss_function
+
+    # evaluate
+    imgs, _, targets = next(iter(trainer.train_dl))
+    imgs = imgs.to(trainer.device)
+
+    # without pretraining
+    trainer = Trainer(data_dir=example_data_path, model_path=model_path + '/tracing',
+                      n_channels=[8, 16, 32, 64, 128, 32], backbone='unetr',
+                      train_dir='', val_dir='', batch_size=1, epochs=2, tracing=True, n_points=2)
+    trainer.net.to(trainer.device).eval()
+    outputs1 = trainer.net(imgs)
+
+    # with pretraining
+    trainer = Trainer(data_dir=example_data_path, model_path=model_path + '/tracing',
+                      pretrained_model_path=trainer.config.model_path + '/best_model.pth',
+                      n_channels=[8, 16, 32, 64, 128, 32], backbone='unetr',
+                      train_dir='', val_dir='', batch_size=1, epochs=2, tracing=True, n_points=2)
+    trainer.net.to(trainer.device).eval()
+    outputs2 = trainer.net(imgs)
+    loss1 = loss_fn(outputs1['backbone_out'], targets['mask'].to(trainer.device))
+    loss2 = loss_fn(outputs2['backbone_out'], targets['mask'].to(trainer.device))
+    assert loss2.item() < loss1.item()

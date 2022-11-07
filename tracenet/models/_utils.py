@@ -1,3 +1,6 @@
+import os
+
+import torch
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet, AttentionUnet, UNETR
 
@@ -69,6 +72,10 @@ def get_backbone(config):
     else:
         raise ValueError(rf"{config.backbone} is not a valid backbone; "
                          " valid backbones are: 'monai_unet', 'csnet', 'spoco_unet'")
+
+    if config.pretrained_model_path is not None and os.path.exists(config.pretrained_model_path):
+        print(rf"Loading pretrained backbone weights from {config.pretrained_model_path}")
+        net.load_state_dict(torch.load(config.pretrained_model_path))
 
     return net, feature_layer
 
