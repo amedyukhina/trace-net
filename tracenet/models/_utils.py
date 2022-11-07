@@ -92,7 +92,8 @@ def get_model(config):
                            hidden_dim=config.n_channels[-1],
                            num_classes=config.n_classes,
                            n_points=config.n_points,
-                           decoder_only=config.decoder_only)
+                           decoder_only=config.decoder_only,
+                           freeze_backbone=config.freeze_backbone)
             return net
         elif config.spoco:
             net2 = get_backbone(config)

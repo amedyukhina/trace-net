@@ -84,7 +84,6 @@ def test_tracenet_training(example_data_path, model_path):
 
 def test_tracenet_pretraining(example_data_path, model_path):
     # pretrain
-    print('Pretrain')
     trainer = Trainer(data_dir=example_data_path, model_path=model_path + '/backbone',
                       n_channels=[8, 16, 32, 64, 128, 32], backbone='unetr',
                       train_dir='', val_dir='', batch_size=1, epochs=2, tracing=False, n_points=2)
@@ -112,3 +111,31 @@ def test_tracenet_pretraining(example_data_path, model_path):
     loss1 = loss_fn(outputs1['backbone_out'], targets['mask'].to(trainer.device))
     loss2 = loss_fn(outputs2['backbone_out'], targets['mask'].to(trainer.device))
     assert loss2.item() < loss1.item()
+
+
+def test_weight_freeze(example_data_path, model_path):
+    # no weight freeze
+    trainer = Trainer(data_dir=example_data_path, model_path=model_path,
+                      freeze_backbone=False,
+                      n_channels=[8, 16, 32, 64, 128, 32], backbone='unetr',
+                      train_dir='', val_dir='', batch_size=1, epochs=2, tracing=True, n_points=2)
+    assert next(trainer.net.backbone.parameters()).requires_grad is True
+    params1 = [param.cpu().detach().numpy() for param in trainer.net.backbone.parameters()]
+    trainer.train()
+    params2 = [param.cpu().detach().numpy() for param in trainer.net.backbone.parameters()]
+
+    for param1, param2 in zip(params1, params2):
+        assert (param1 != param2).any()
+
+    # with weight freeze
+    trainer = Trainer(data_dir=example_data_path, model_path=model_path,
+                      freeze_backbone=True,
+                      n_channels=[8, 16, 32, 64, 128, 32], backbone='unetr',
+                      train_dir='', val_dir='', batch_size=1, epochs=2, tracing=True, n_points=2)
+    assert next(trainer.net.backbone.parameters()).requires_grad is False
+    params1 = [param.cpu().detach().numpy() for param in trainer.net.backbone.parameters()]
+    trainer.train()
+    params2 = [param.cpu().detach().numpy() for param in trainer.net.backbone.parameters()]
+
+    for param1, param2 in zip(params1, params2):
+        assert (param1 == param2).all()

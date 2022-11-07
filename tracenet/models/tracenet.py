@@ -14,10 +14,16 @@ class TraceNet(nn.Module):
 
     def __init__(self, backbone, transformer_input_layer,
                  hidden_dim, num_classes, n_points=2, num_queries=100, nheads=8,
-                 num_encoder_layers=6, num_decoder_layers=6, decoder_only=False):
+                 num_encoder_layers=6, num_decoder_layers=6, decoder_only=False,
+                 freeze_backbone=False):
         super().__init__()
 
         self.backbone = backbone
+        if freeze_backbone:
+            self.backbone.requires_grad_(False)
+        else:
+            self.backbone.requires_grad_(True)
+
         self.decoder_only = decoder_only
         if decoder_only:
             self.transformer = nn.TransformerDecoder(

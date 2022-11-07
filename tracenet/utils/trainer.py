@@ -51,6 +51,7 @@ DEFAULT_CONFIG = dict(
     spoco=False,
     tracing=False,
     decoder_only=False,
+    freeze_backbone=False,
     spoco_momentum=0.999,
     out_channels=16,
     instance=False,
