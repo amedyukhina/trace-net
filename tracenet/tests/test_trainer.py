@@ -23,6 +23,11 @@ def out_channels(request):
     return request.param
 
 
+@pytest.fixture(params=[False, True])
+def b_line(request):
+    return request.param
+
+
 @pytest.fixture(params=[
     [8, 16, 32, 128, 256, 64],
     [8, 16, 32, 128],
@@ -75,9 +80,9 @@ def test_tracenet_loss(example_data_path, model_path, n_channels, backbone):
         assert loss_dict[key].item() == 0
 
 
-def test_tracenet_training(example_data_path, model_path):
+def test_tracenet_training(example_data_path, model_path, b_line):
     trainer = Trainer(data_dir=example_data_path, model_path=model_path, n_channels=[8, 16, 32, 64, 128, 32],
-                      train_dir='', val_dir='', batch_size=1, epochs=2, tracing=True, n_points=2)
+                      train_dir='', val_dir='', batch_size=1, epochs=2, tracing=True, n_points=2, b_line=b_line)
     trainer.train()
     _assert_output(trainer)
 
@@ -86,7 +91,7 @@ def test_tracenet_pretraining(example_data_path, model_path):
     # pretrain
     trainer = Trainer(data_dir=example_data_path, model_path=model_path + '/backbone',
                       n_channels=[8, 16, 32, 64, 128, 32], backbone='unetr',
-                      train_dir='', val_dir='', batch_size=1, epochs=2, tracing=False, n_points=2)
+                      train_dir='', val_dir='', batch_size=1, epochs=5, tracing=False, n_points=2)
     trainer.train()
     loss_fn = trainer.loss_function
 

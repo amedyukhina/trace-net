@@ -13,7 +13,8 @@ from tracenet.datasets.transforms import (
 
 def get_loaders(data_dir, img_dir='img', gt_dir='gt', train_dir='train', val_dir='val',
                 train_transform=None, valid_transform=None, intensity_transform=None, shuffle=True,
-                maxsize=512, n_points=2, batch_size=2, instance_ratio=1, mean_std=(0, 1), dataset=None, **_):
+                maxsize=512, n_points=2, batch_size=2, instance_ratio=1, mean_std=(0, 1), dataset=None,
+                b_line=False, **_):
     # Get Transforms
     if dataset is None:
         dataset = Filament
@@ -37,7 +38,7 @@ def get_loaders(data_dir, img_dir='img', gt_dir='gt', train_dir='train', val_dir
             dataset(
                 [data_dir / dset / img_dir / fn for fn in files],
                 [data_dir / dset / gt_dir / fn.replace('.tif', '.csv') for fn in files],
-                maxsize=maxsize, mean_std=mean_std, n_points=n_points, **transform
+                maxsize=maxsize, mean_std=mean_std, n_points=n_points, b_line=b_line, **transform
             )
         )
     ds_train, ds_val = ds

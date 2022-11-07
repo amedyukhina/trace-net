@@ -8,8 +8,7 @@ class Points(torch.utils.data.Dataset):
     Dataset with points.
     """
 
-    def __init__(self, image_files, ann_files, mean_std=(0, 1), transforms=None, intensity_transforms=None,
-                 instance_ratio=1, col_id='id', maxsize=16, n_points=10, cols=None, length=100):
+    def __init__(self, image_files, ann_files, maxsize=16, n_points=10, length=100, **_):
         self.maxsize = maxsize
         self.n_points = n_points
         self.length = length

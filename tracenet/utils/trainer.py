@@ -52,6 +52,7 @@ DEFAULT_CONFIG = dict(
     tracing=False,
     decoder_only=False,
     freeze_backbone=False,
+    b_line=False,
     spoco_momentum=0.999,
     out_channels=16,
     instance=False,
@@ -108,7 +109,7 @@ class Trainer:
             self.train_dl, self.val_dl = get_loaders(dataset=Points, **config)
 
         if self.config.tracing:
-            self.loss_function_trace = Criterion(self.config.n_classes)
+            self.loss_function_trace = Criterion(self.config.n_classes, b_line=self.config.b_line)
         else:
             self.loss_function_trace = None
 
@@ -309,8 +310,10 @@ class Trainer:
     def _postproc_tracing(self, imgs, outputs, targets):
         probas = outputs['pred_logits'].softmax(-1)[0, :, 1:]
         keep = probas.max(-1).values > 0.7
-        return plot_traces(imgs[0][0].cpu(), outputs['pred_traces'][0, keep].cpu(), return_image=True), \
-               plot_traces(imgs[0][0].cpu(), targets['trace'][0].cpu(), return_image=True)
+        return plot_traces(imgs[0][0].cpu(), outputs['pred_traces'][0, keep].cpu(),
+                           return_image=True, b_line=self.config.b_line), \
+               plot_traces(imgs[0][0].cpu(), targets['trace'][0].cpu(),
+                           return_image=True, b_line=self.config.b_line)
 
     def log_images(self, iteration):
         if self.tbwriter is not None:

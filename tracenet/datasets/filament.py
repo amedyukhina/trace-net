@@ -7,7 +7,8 @@ from skimage import io
 from tracenet.datasets.transforms import apply_transform
 from ..utils.points import (
     normalize_points,
-    get_first_and_last_points
+    get_first_and_last_points,
+    points_to_bounding_line
 )
 
 
@@ -21,7 +22,7 @@ class Filament(torch.utils.data.Dataset):
     """
 
     def __init__(self, image_files, ann_files, mean_std=(0, 1), transforms=None, intensity_transforms=None,
-                 instance_ratio=1, col_id='id', maxsize=512, n_points=2, cols=None):
+                 instance_ratio=1, col_id='id', maxsize=512, n_points=2, cols=None, b_line=False):
         self.transforms = transforms
         self.intensity_transforms = intensity_transforms
         self.instance_ratio = instance_ratio
@@ -33,6 +34,7 @@ class Filament(torch.utils.data.Dataset):
         self.n_points = n_points
         self.cols = cols if cols is not None else ['y', 'x']
         self.mean, self.std = mean_std
+        self.b_line = b_line
 
     def __getitem__(self, index: int):
         image_id = self.image_files[index]
@@ -79,6 +81,10 @@ class Filament(torch.utils.data.Dataset):
             normalize_points(target['keypoints'], image.shape[:2]),
             target['point_labels']
         ).reshape(-1, 4).float()
+
+        if self.b_line:
+            target['trace'] = points_to_bounding_line(target['trace'])
+
         target['trace_class'] = torch.ones((target['trace'].shape[0],), dtype=torch.int64)
 
         image = torch.tensor(np.moveaxis(image, -1, 0), dtype=torch.float64)

@@ -51,6 +51,7 @@ if __name__ == '__main__':
     parser.add_argument('-spoco', '--spoco', action='store_true')
     parser.add_argument('-tr', '--tracing', action='store_true')
     parser.add_argument('-fr', '--freeze-backbone', action='store_true')
+    parser.add_argument('-bl', '--b-line', action='store_true', help='Convert points to a bounding line')
     parser.add_argument('-bg', '--include-background', action='store_true')
     parser.add_argument('-wapi', '--wandb-api-key-file', type=str, default=None,
                         help='Path to the wandb api key file')

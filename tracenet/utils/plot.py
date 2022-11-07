@@ -4,7 +4,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from skimage import io
 from sklearn.decomposition import PCA
 
-from tracenet.utils.points import denormalize_points
+from tracenet.utils.points import denormalize_points, bounding_line_to_points
 
 COLORS = [[0.000, 0.447, 0.741], [0.850, 0.325, 0.098], [0.929, 0.694, 0.125],
           [0.494, 0.184, 0.556], [0.466, 0.674, 0.188], [0.301, 0.745, 0.933]]
@@ -13,11 +13,11 @@ CLASSES = [
 ]
 
 
-def plot_traces(img, traces, return_image=False, size=6):
+def plot_traces(img, traces, return_image=False, size=6, b_line=False):
     img = normalize(img.numpy())
-    #
-    # traces = bounding_line_to_points(traces)
-    # traces = denormalize_points(traces, img.shape[-2:]).reshape(-1, 4)
+
+    if b_line:
+        traces = bounding_line_to_points(traces)
     traces = denormalize_points(traces.reshape(-1, 2), img.shape[-2:]).reshape(-1, 4)
 
     fig = plt.figure(figsize=(size, size))

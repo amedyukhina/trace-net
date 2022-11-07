@@ -18,7 +18,7 @@ class Criterion(nn.Module):
         2) compute loss between each matched pair
     """
 
-    def __init__(self, num_classes, matcher=None, losses=None, eos_coef=0.1):
+    def __init__(self, num_classes, matcher=None, losses=None, eos_coef=0.1, b_line=False):
         """ Create the criterion.
         Parameters:
             num_classes: number of object categories, omitting the special no-object category
@@ -28,12 +28,13 @@ class Criterion(nn.Module):
         """
         super().__init__()
         self.num_classes = num_classes
-        self.matcher = matcher if matcher is not None else HungarianMatcher()
+        self.matcher = matcher if matcher is not None else HungarianMatcher(b_line=b_line)
         self.eos_coef = eos_coef
         self.losses = losses if losses is not None else ['labels', 'traces', 'cardinality']
         empty_weight = torch.ones(self.num_classes + 1)
         empty_weight[0] = self.eos_coef
         self.register_buffer('empty_weight', empty_weight)
+        self.b_line = b_line
 
     def loss_labels(self, outputs, targets, indices, **_):
         """Classification loss (NLL)
@@ -75,7 +76,10 @@ class Criterion(nn.Module):
         idx = self._get_src_permutation_idx(indices)
         src_traces = outputs['pred_traces'][idx]
         target_traces = torch.cat([t[i] for t, (_, i) in zip(targets['trace'], indices)], dim=0)
-        loss_trace = symmetric_distance(src_traces, target_traces)
+        if self.b_line:
+            loss_trace = F.l1_loss(src_traces, target_traces, reduction='none')
+        else:
+            loss_trace = symmetric_distance(src_traces, target_traces)
         losses = {'loss_trace': loss_trace.sum() / num_boxes}
 
         return losses

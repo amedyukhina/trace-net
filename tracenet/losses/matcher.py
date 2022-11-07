@@ -11,10 +11,11 @@ from torch import nn
 
 class HungarianMatcher(nn.Module):
 
-    def __init__(self, cost_class: float = 1, cost_bbox: float = 1):
+    def __init__(self, cost_class: float = 1, cost_bbox: float = 1, b_line=False):
         super().__init__()
         self.cost_class = cost_class
         self.cost_bbox = cost_bbox
+        self.b_line = b_line
         assert cost_class != 0 or cost_bbox != 0, "all costs cant be 0"
 
     @torch.no_grad()
@@ -35,9 +36,12 @@ class HungarianMatcher(nn.Module):
         cost_class = -out_prob[:, tgt_ids]
 
         # Compute the L1 cost between boxes
-        cost_bbox = torch.cdist(torch.stack([out_bbox, out_bbox.roll(2, -1)]),
-                                torch.stack([tgt_bbox, tgt_bbox]), p=1)
-        cost_bbox = torch.min(cost_bbox, dim=0)[0]
+        if self.b_line:
+            cost_bbox = torch.cdist(out_bbox, tgt_bbox, p=1)
+        else:
+            cost_bbox = torch.cdist(torch.stack([out_bbox, out_bbox.roll(2, -1)]),
+                                    torch.stack([tgt_bbox, tgt_bbox]), p=1)
+            cost_bbox = torch.min(cost_bbox, dim=0)[0]
 
         # Final cost matrix
         C = self.cost_bbox * cost_bbox + self.cost_class * cost_class
