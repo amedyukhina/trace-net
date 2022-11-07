@@ -14,13 +14,13 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from .loader import get_loaders
+from ..datasets.points import Points
+from ..losses.cldice import SoftDiceClDice
 from ..losses.contrastive import ContrastiveLoss
 from ..losses.criterion import Criterion
 from ..losses.indexing import PointLoss
-from ..losses.cldice import SoftDiceClDice
 from ..models import get_model
 from ..utils.plot import pca_project, normalize, plot_traces, plot_points
-from ..datasets.points import Points
 
 DEFAULT_CONFIG = dict(
     backbone='monai_unet',
@@ -49,6 +49,7 @@ DEFAULT_CONFIG = dict(
     spatial_dims=2,
     spoco=False,
     tracing=False,
+    decoder_only=False,
     spoco_momentum=0.999,
     out_channels=16,
     instance=False,
@@ -66,6 +67,8 @@ class Trainer:
         config = copy.deepcopy(DEFAULT_CONFIG)
         config.update(kwargs)
         self.config = argparse.Namespace(**config)
+        if self.config.backbone.lower() == 'unetr':
+            self.config.decoder_only = True
 
         # set up logging with tensorboard and wandb
         self.log_wandb = True if self.config.wandb_api_key_file is not None and \

@@ -41,12 +41,11 @@ def get_backbone(config):
             in_channels=3,
             out_channels=out_channels,
             img_size=config.maxsize,
-            feature_size=16,
             norm_name='batch',
-            hidden_size=256,
+            hidden_size=config.n_channels[-1],
             num_heads=8
         )
-        feature_layer = ''
+        feature_layer = 'vit'
     elif config.backbone.lower() == 'csnet':
         net = CSNet(
             spatial_dims=config.spatial_dims,
@@ -85,7 +84,8 @@ def get_model(config):
                            transformer_input_layer=feature_layer,
                            hidden_dim=config.n_channels[-1],
                            num_classes=config.n_classes,
-                           n_points=config.n_points)
+                           n_points=config.n_points,
+                           decoder_only=config.decoder_only)
             return net
         elif config.spoco:
             net2 = get_backbone(config)

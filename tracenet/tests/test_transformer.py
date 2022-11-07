@@ -1,6 +1,7 @@
+import os
+
 import pytest
 import torch
-import os
 
 from tracenet.losses.indexing import PointLoss
 from tracenet.models.transformer import Transformer

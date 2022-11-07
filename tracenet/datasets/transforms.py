@@ -4,7 +4,7 @@ import torch
 import torch.utils.data
 from torchvision import transforms
 
-from .custom_transforms import GaussianNoise, GaussianBlur, RandomBrightnessContrast
+from .custom_transforms import GaussianNoise, GaussianBlur
 
 KEYPOINT_PARAMS = A.KeypointParams(format='yx',
                                    label_fields=['point_labels'],
