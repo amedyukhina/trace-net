@@ -76,10 +76,11 @@ class Criterion(nn.Module):
         idx = self._get_src_permutation_idx(indices)
         src_traces = outputs['pred_traces'][idx]
         target_traces = torch.cat([t[i] for t, (_, i) in zip(targets['trace'], indices)], dim=0)
-        if self.b_line:
-            loss_trace = F.l1_loss(src_traces, target_traces, reduction='none')
-        else:
-            loss_trace = symmetric_distance(src_traces, target_traces)
+        # if self.b_line:
+        #     loss_trace = F.l1_loss(src_traces, target_traces, reduction='none')
+        # else:
+        #     loss_trace = symmetric_distance(src_traces, target_traces)
+        loss_trace = F.l1_loss(src_traces, target_traces, reduction='none')
         losses = {'loss_trace': loss_trace.sum() / num_boxes}
 
         return losses
