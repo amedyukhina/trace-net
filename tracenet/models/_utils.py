@@ -9,6 +9,7 @@ from .backbones.spoco_unet import UNet2D as SpocoBackbone
 from .spoco import SpocoNet
 from .tracenet import TraceNet
 from .transformer import Transformer
+from .detr import DETR
 
 
 def get_backbone(config):
@@ -83,6 +84,9 @@ def get_backbone(config):
 def get_model(config):
     if config.backbone.lower() == 'transformer':
         net = Transformer(hidden_dim=256, n_points=1)
+        return net
+    elif config.backbone.lower() == 'detr':
+        net = DETR(n_points=config.n_points, n_classes=config.n_classes)
         return net
     else:
         net, feature_layer = get_backbone(config)

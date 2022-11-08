@@ -73,6 +73,13 @@ class Trainer:
         if self.config.backbone.lower() == 'unetr':
             self.config.decoder_only = True
 
+        self.metric = DiceMetric(include_background=self.config.include_background,
+                                 reduction="mean")
+
+        if self.config.backbone.lower() == 'detr':
+            self.config.tracing = True
+            self.metric = None
+
         # set up logging with tensorboard and wandb
         self.log_wandb = True if self.config.wandb_api_key_file is not None and \
                                  os.path.exists(self.config.wandb_api_key_file) else False
@@ -85,9 +92,6 @@ class Trainer:
         # set data loaders and the model
         self.train_dl, self.val_dl = get_loaders(**config)
         self.net = get_model(self.config)
-
-        self.metric = DiceMetric(include_background=self.config.include_background,
-                                 reduction="mean")
 
         # set loss function, validation metric, and forward pass depending on the model type
         if self.config.instance:
@@ -238,19 +242,23 @@ class Trainer:
                 loss_dict = self.loss_function_trace(outputs, targets)
                 tracenet_loss = sum(loss_dict[k] * self.weight_dict_trace[k]
                                     for k in loss_dict.keys() if k in self.weight_dict_trace)
-                segm_output = outputs['backbone_out']
+                if 'backbone_out' in outputs:
+                    segm_output = outputs['backbone_out']
+                else:
+                    segm_output = None
             else:
                 tracenet_loss = None
                 segm_output = outputs
 
-            if self.config.instance:
-                segm_loss = self.loss_function(segm_output, targets['labeled_mask'].to(self.device), metric)
-            else:
-                segm_loss = self.loss_function(segm_output, targets['mask'].to(self.device))
-                if metric is not None:
-                    metric(segm_output.argmax(1).unsqueeze(1),
-                           targets['mask'].unsqueeze(1).to(self.device))
-            loss_dict['loss_segm'] = segm_loss
+            if segm_output is not None:
+                if self.config.instance:
+                    segm_loss = self.loss_function(segm_output, targets['labeled_mask'].to(self.device), metric)
+                else:
+                    segm_loss = self.loss_function(segm_output, targets['mask'].to(self.device))
+                    if metric is not None:
+                        metric(segm_output.argmax(1).unsqueeze(1),
+                               targets['mask'].unsqueeze(1).to(self.device))
+                loss_dict['loss_segm'] = segm_loss
             if tracenet_loss is not None:
                 loss_dict['loss_tracenet'] = tracenet_loss
             losses = sum(loss_dict[k] * self.weight_dict[k] for k in loss_dict.keys() if k in self.weight_dict)
@@ -300,7 +308,10 @@ class Trainer:
 
     def _postproc_segm(self, outputs, targets):
         if self.config.tracing:
-            outputs = outputs['backbone_out']
+            if 'backbone_out' in outputs:
+                outputs = outputs['backbone_out']
+            else:
+                return None, None
         if self.config.instance:
             return pca_project(outputs[0].cpu().numpy()), \
                    label2rgb(targets['labeled_mask'][0].numpy(), bg_label=0)
@@ -327,8 +338,9 @@ class Trainer:
             else:
                 self.tbwriter.add_image('input', normalize(batch[0][0]), iteration, dataformats='CHW')
                 output, target = self._postproc_segm(outputs, targets)
-                self.tbwriter.add_image('output_segm', output, iteration, dataformats='HWC')
-                self.tbwriter.add_image('target_segm', target, iteration, dataformats='HWC')
+                if output is not None:
+                    self.tbwriter.add_image('output_segm', output, iteration, dataformats='HWC')
+                    self.tbwriter.add_image('target_segm', target, iteration, dataformats='HWC')
                 if self.config.tracing:
                     output, target = self._postproc_tracing(batch[0], outputs, targets)
                     self.tbwriter.add_image('output_tracing', output, iteration, dataformats='HWC')
