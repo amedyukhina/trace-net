@@ -11,12 +11,12 @@ from torch import nn
 
 class HungarianMatcher(nn.Module):
 
-    def __init__(self, cost_class: float = 1, cost_bbox: float = 1, b_line=False):
+    def __init__(self, cost_class: float = 1, cost_coord: float = 1, symmetric=False):
         super().__init__()
         self.cost_class = cost_class
-        self.cost_bbox = cost_bbox
-        self.b_line = b_line
-        assert cost_class != 0 or cost_bbox != 0, "all costs cant be 0"
+        self.cost_coord = cost_coord
+        self.symmetric = symmetric
+        assert cost_class != 0 or cost_coord != 0, "all costs cant be 0"
 
     @torch.no_grad()
     def forward(self, outputs, targets):
@@ -24,7 +24,7 @@ class HungarianMatcher(nn.Module):
 
         # We flatten to compute the cost matrices in a batch
         out_prob = outputs["pred_logits"].flatten(0, 1).softmax(-1)  # [batch_size * num_queries, num_classes]
-        out_bbox = outputs["pred_traces"].flatten(0, 1)  # [batch_size * num_queries, 4]
+        out_coord = outputs["pred_traces"].flatten(0, 1)  # [batch_size * num_queries, 4]
 
         # Also concat the target labels and boxes
         tgt_bbox = torch.cat(targets['trace'])
@@ -37,15 +37,15 @@ class HungarianMatcher(nn.Module):
 
         # Compute the L1 cost between boxes
         # if self.b_line:
-        #     cost_bbox = torch.cdist(out_bbox, tgt_bbox, p=1)
+        #     cost_coord = torch.cdist(out_coord, tgt_bbox, p=1)
         # else:
-        #     cost_bbox = torch.cdist(torch.stack([out_bbox, out_bbox.roll(2, -1)]),
+        #     cost_coord = torch.cdist(torch.stack([out_coord, out_coord.roll(2, -1)]),
         #                             torch.stack([tgt_bbox, tgt_bbox]), p=1)
-        #     cost_bbox = torch.min(cost_bbox, dim=0)[0]
-        cost_bbox = torch.cdist(out_bbox, tgt_bbox, p=1)
+        #     cost_coord = torch.min(cost_bbox, dim=0)[0]
+        cost_coord = torch.cdist(out_coord, tgt_bbox, p=1)
 
         # Final cost matrix
-        C = self.cost_bbox * cost_bbox + self.cost_class * cost_class
+        C = self.cost_coord * cost_coord + self.cost_class * cost_class
         C = C.view(bs, num_queries, -1).cpu()
 
         sizes = [len(v) for v in targets["trace"]]

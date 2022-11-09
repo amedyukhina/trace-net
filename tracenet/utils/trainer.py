@@ -7,23 +7,15 @@ import os
 import numpy as np
 import torch
 import wandb
-from monai.losses import DiceLoss
-from monai.metrics import DiceMetric
-from skimage.color import label2rgb
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from .loader import get_loaders
-from ..datasets.points import Points
-from ..losses.cldice import SoftDiceClDice
-from ..losses.contrastive import ContrastiveLoss
 from ..losses.criterion import Criterion
-from ..losses.indexing import PointLoss
-from ..models import get_model
-from ..utils.plot import pca_project, normalize, plot_traces, plot_points
+from ..models.detr import DETR
+from ..utils.plot import normalize, plot_traces
 
 DEFAULT_CONFIG = dict(
-    backbone='monai_unet',
     epochs=20,
     batch_size=2,
     lr=0.0001,
@@ -44,23 +36,7 @@ DEFAULT_CONFIG = dict(
     gt_dir='gt',
     maxsize=512,
     n_points=2,
-    n_channels=(16, 32, 64, 128),
-    num_res_units=2,
-    dropout=0,
-    spatial_dims=2,
-    spoco=False,
-    tracing=False,
-    decoder_only=False,
-    freeze_backbone=False,
-    b_line=False,
-    spoco_momentum=0.999,
-    out_channels=16,
-    instance=False,
-    delta_var=0.5,
-    delta_dist=3.,
-    kernel_threshold=0.9,
-    include_background=False,
-    cldice_alpha=0.5,
+    weight_trace=5,
     wandb_api_key_file='path_to_my_wandb_api_key_file'
 )
 
@@ -70,15 +46,6 @@ class Trainer:
         config = copy.deepcopy(DEFAULT_CONFIG)
         config.update(kwargs)
         self.config = argparse.Namespace(**config)
-        if self.config.backbone.lower() == 'unetr':
-            self.config.decoder_only = True
-
-        self.metric = DiceMetric(include_background=self.config.include_background,
-                                 reduction="mean")
-
-        if self.config.backbone.lower() == 'detr':
-            self.config.tracing = True
-            self.metric = None
 
         # set up logging with tensorboard and wandb
         self.log_wandb = True if self.config.wandb_api_key_file is not None and \
@@ -91,31 +58,10 @@ class Trainer:
 
         # set data loaders and the model
         self.train_dl, self.val_dl = get_loaders(**config)
-        self.net = get_model(self.config)
+        self.net = DETR(n_points=self.config.n_points, n_classes=self.config.n_classes)
 
         # set loss function, validation metric, and forward pass depending on the model type
-        if self.config.instance:
-            dice_loss = DiceLoss(include_background=self.config.include_background)
-            self.loss_function = ContrastiveLoss(self.config.delta_var,
-                                                 self.config.delta_dist,
-                                                 self.config.kernel_threshold,
-                                                 instance_loss=dice_loss)
-        else:
-            self.loss_function = SoftDiceClDice(alpha=self.config.cldice_alpha,
-                                                include_background=self.config.include_background,
-                                                to_onehot_y=True, softmax=True)
-
-        if self.config.backbone.lower() == 'transformer':
-            self.loss_function = PointLoss(maxval=1.)
-            self.metric = None
-            config['maxsize'] = 16
-            config['n_points'] = 10
-            self.train_dl, self.val_dl = get_loaders(dataset=Points, **config)
-
-        if self.config.tracing:
-            self.loss_function_trace = Criterion(self.config.n_classes, b_line=self.config.b_line)
-        else:
-            self.loss_function_trace = None
+        self.loss_function = Criterion(self.config.n_classes)
 
         # send the model and loss to cuda if available
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -134,8 +80,7 @@ class Trainer:
         )
 
         # set loss weight coefficients
-        self.weight_dict_trace = {'loss_ce': 1, 'loss_trace': 5}
-        self.weight_dict = {'loss_segm': 1., 'loss_tracenet': 1.}
+        self.weight_dict = {'loss_ce': 1, 'loss_trace': self.config.weight_trace}
         self.trained = False
 
     def __del__(self):
@@ -197,11 +142,6 @@ class Trainer:
             print(f"epoch {epoch + 1} validation loss: {val_loss:.4f}")
             wandb.log({'validation loss': val_loss})
             self.log_scalar_tb('validation loss', val_loss, epoch + 1)
-            if self.metric is not None:
-                val_metric = self.metric.aggregate().item()
-                self.metric.reset()
-                wandb.log({self.metric.__class__.__name__: val_metric})
-                self.log_scalar_tb(self.metric.__class__.__name__, val_metric, epoch + 1)
             if val_loss_dicts[0] is not None:
                 for key in val_loss_dicts[0].keys():
                     loss_val = np.mean([val_loss_dicts[i][key].item() for i in range(len(val_loss_dicts))])
@@ -222,46 +162,15 @@ class Trainer:
 
     def forward_pass(self, batch):
         imgs1, imgs2, targets = batch
-        if self.config.spoco:
-            outputs = self.net(imgs1.to(self.device),
-                               imgs2.to(self.device))
-        elif self.config.backbone.lower() == 'transformer':
-            outputs = self.net(targets['mask'].unsqueeze(1).float().to(self.device))
-        else:
-            outputs = self.net(imgs1.to(self.device))
+        outputs = self.net(imgs1.to(self.device))
         return outputs, targets
 
-    def calculate_losses(self, outputs, targets, metric=None):
-        loss_dict = {}
-        if self.config.backbone.lower() == 'transformer':
-            losses = self.loss_function(outputs, targets['mask'].float().to(self.device))
-        else:
-            if self.config.tracing:
-                for key in ['trace', 'trace_class']:
-                    targets[key] = [t.to(self.device) for t in targets[key]]
-                loss_dict = self.loss_function_trace(outputs, targets)
-                tracenet_loss = sum(loss_dict[k] * self.weight_dict_trace[k]
-                                    for k in loss_dict.keys() if k in self.weight_dict_trace)
-                if 'backbone_out' in outputs:
-                    segm_output = outputs['backbone_out']
-                else:
-                    segm_output = None
-            else:
-                tracenet_loss = None
-                segm_output = outputs
-
-            if segm_output is not None:
-                if self.config.instance:
-                    segm_loss = self.loss_function(segm_output, targets['labeled_mask'].to(self.device), metric)
-                else:
-                    segm_loss = self.loss_function(segm_output, targets['mask'].to(self.device))
-                    if metric is not None:
-                        metric(segm_output.argmax(1).unsqueeze(1),
-                               targets['mask'].unsqueeze(1).to(self.device))
-                loss_dict['loss_segm'] = segm_loss
-            if tracenet_loss is not None:
-                loss_dict['loss_tracenet'] = tracenet_loss
-            losses = sum(loss_dict[k] * self.weight_dict[k] for k in loss_dict.keys() if k in self.weight_dict)
+    def calculate_losses(self, outputs, targets):
+        for key in ['trace', 'trace_class']:
+            targets[key] = [t.to(self.device) for t in targets[key]]
+        loss_dict = self.loss_function(outputs, targets)
+        losses = sum(loss_dict[k] * self.weight_dict[k]
+                     for k in loss_dict.keys() if k in self.weight_dict)
         return losses, loss_dict
 
     def train_epoch(self):
@@ -293,7 +202,7 @@ class Trainer:
             for batch in tqdm(self.val_dl):
                 step += 1
                 outputs, targets = self.forward_pass(batch)
-                losses, loss_dict = self.calculate_losses(outputs, targets, self.metric)
+                losses, loss_dict = self.calculate_losses(outputs, targets)
                 loss_dicts.append(loss_dict)
                 epoch_loss += losses.item()
             epoch_loss /= step
@@ -306,25 +215,13 @@ class Trainer:
         torch.save(self.net.state_dict(), fn_out)
         print(rf"Saved model to: {fn_out}")
 
-    def _postproc_segm(self, outputs, targets):
-        if self.config.tracing:
-            if 'backbone_out' in outputs:
-                outputs = outputs['backbone_out']
-            else:
-                return None, None
-        if self.config.instance:
-            return pca_project(outputs[0].cpu().numpy()), \
-                   label2rgb(targets['labeled_mask'][0].numpy(), bg_label=0)
-        else:
-            return outputs[0].argmax(0).unsqueeze(-1), targets['mask'][0].unsqueeze(-1)
-
-    def _postproc_tracing(self, imgs, outputs, targets):
+    def _postproc_traces(self, imgs, outputs, targets):
         probas = outputs['pred_logits'].softmax(-1)[0, :, 1:]
         keep = probas.max(-1).values > 0.7
         return plot_traces(imgs[0][0].cpu(), outputs['pred_traces'][0, keep].cpu(),
-                           return_image=True, b_line=self.config.b_line, n_points=self.config.n_points), \
+                           return_image=True, n_points=self.config.n_points), \
                plot_traces(imgs[0][0].cpu(), targets['trace'][0].cpu(),
-                           return_image=True, b_line=self.config.b_line, n_points=self.config.n_points)
+                           return_image=True, n_points=self.config.n_points)
 
     def log_images(self, iteration):
         if self.tbwriter is not None:
@@ -332,16 +229,7 @@ class Trainer:
             with torch.no_grad():
                 outputs, targets = self.forward_pass(batch)
 
-            if self.config.backbone.lower() == 'transformer':
-                img = plot_points(batch[0][0][0].cpu(), outputs[0].cpu(), return_image=True)
-                self.tbwriter.add_image('output', img, iteration, dataformats='HWC')
-            else:
-                self.tbwriter.add_image('input', normalize(batch[0][0]), iteration, dataformats='CHW')
-                output, target = self._postproc_segm(outputs, targets)
-                if output is not None:
-                    self.tbwriter.add_image('output_segm', output, iteration, dataformats='HWC')
-                    self.tbwriter.add_image('target_segm', target, iteration, dataformats='HWC')
-                if self.config.tracing:
-                    output, target = self._postproc_tracing(batch[0], outputs, targets)
-                    self.tbwriter.add_image('output_tracing', output, iteration, dataformats='HWC')
-                    self.tbwriter.add_image('target_tracing', target, iteration, dataformats='HWC')
+            self.tbwriter.add_image('input', normalize(batch[0][0]), iteration, dataformats='CHW')
+            output, target = self._postproc_traces(batch[0], outputs, targets)
+            self.tbwriter.add_image('output_tracing', output, iteration, dataformats='HWC')
+            self.tbwriter.add_image('target_tracing', target, iteration, dataformats='HWC')

@@ -43,14 +43,3 @@ def model_path():
     os.makedirs(path, exist_ok=True)
     yield path
     shutil.rmtree(path)
-
-
-@pytest.fixture(scope='module', params=['monai_unet', 'csnet', 'spoco_unet', 'attention_unet', 'unetr', 'detr'])
-def backbone(request):
-    return request.param
-
-
-@pytest.fixture(scope='module', params=np.random.randint(0, 100, 10))
-def random_coord(random_imgsize):
-    return torch.as_tensor(np.array([np.random.randint(0, s, 2)
-                                     for s in random_imgsize]).transpose()).to(float).ravel()

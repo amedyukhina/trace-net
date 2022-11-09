@@ -7,8 +7,7 @@ from skimage import io
 from tracenet.datasets.transforms import apply_transform
 from ..utils.points import (
     normalize_points,
-    get_first_and_last_points,
-    points_to_bounding_line
+    get_first_and_last_points
 )
 
 
@@ -22,7 +21,7 @@ class Filament(torch.utils.data.Dataset):
     """
 
     def __init__(self, image_files, ann_files, mean_std=(0, 1), transforms=None, intensity_transforms=None,
-                 instance_ratio=1, col_id='id', maxsize=512, n_points=2, cols=None, b_line=False):
+                 instance_ratio=1, col_id='id', maxsize=512, n_points=2, cols=None):
         self.transforms = transforms
         self.intensity_transforms = intensity_transforms
         self.instance_ratio = instance_ratio
@@ -34,7 +33,6 @@ class Filament(torch.utils.data.Dataset):
         self.n_points = n_points
         self.cols = cols if cols is not None else ['y', 'x']
         self.mean, self.std = mean_std
-        self.b_line = b_line
 
     def __getitem__(self, index: int):
         image_id = self.image_files[index]
@@ -81,12 +79,9 @@ class Filament(torch.utils.data.Dataset):
 
         trace = normalize_points(target['keypoints'], image.shape[:2])
         if self.n_points > 2:
-            target['trace'] = trace.reshape(-1, self.n_points*2).float()
+            target['trace'] = trace.reshape(-1, self.n_points * 2).float()
         else:
             target['trace'] = get_first_and_last_points(trace, target['point_labels']).reshape(-1, 4).float()
-
-        if self.b_line:
-            target['trace'] = points_to_bounding_line(target['trace'])
 
         target['trace_class'] = torch.ones((target['trace'].shape[0],), dtype=torch.int64)
 
