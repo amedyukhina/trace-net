@@ -6,10 +6,10 @@ from monai.networks.nets import UNet, AttentionUnet, UNETR
 
 from .backbones.csnet import CSNet
 from .backbones.spoco_unet import UNet2D as SpocoBackbone
+from .detr import DETR
 from .spoco import SpocoNet
 from .tracenet import TraceNet
 from .transformer import Transformer
-from .detr import DETR
 
 
 def get_backbone(config):

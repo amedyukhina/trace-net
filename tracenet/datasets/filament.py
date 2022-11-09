@@ -57,6 +57,8 @@ class Filament(torch.utils.data.Dataset):
             df = sample_instances(df, self.instance_ratio, seed=self.seeds[index], col_id=self.col_id)
 
         points, labels = df_to_points(df, self.cols, self.col_id)
+        if self.n_points > 2:
+            points, labels = make_points_equally_spaced(points, labels, self.n_points)
         target = dict(
             keypoints=points + padding,
             point_labels=labels,
@@ -77,10 +79,11 @@ class Filament(torch.utils.data.Dataset):
         target['keypoints'] = torch.tensor(target['keypoints'], dtype=torch.float64)
         target['point_labels'] = torch.tensor(target['point_labels'], dtype=torch.int64)
 
-        target['trace'] = get_first_and_last_points(
-            normalize_points(target['keypoints'], image.shape[:2]),
-            target['point_labels']
-        ).reshape(-1, 4).float()
+        trace = normalize_points(target['keypoints'], image.shape[:2])
+        if self.n_points > 2:
+            target['trace'] = trace.reshape(-1, self.n_points*2).float()
+        else:
+            target['trace'] = get_first_and_last_points(trace, target['point_labels']).reshape(-1, 4).float()
 
         if self.b_line:
             target['trace'] = points_to_bounding_line(target['trace'])
@@ -146,6 +149,41 @@ def generate_labeled_mask(points, labels, shape, n_interp=30):
 
 def _dist(x, y):
     return np.sqrt(np.sum((x - y) ** 2, axis=1))
+
+
+def make_points_equally_spaced(points, labels, n_points=5):
+    """
+    Interpolate the filament to a given number of points.
+    """
+    points, labels = _interpolate_points(points, labels, n_interp=10)
+
+    new_points = []
+    new_labels = []
+    for lb in np.unique(labels):
+        ind = np.where(labels == lb)
+        coords = points[ind]
+
+        # create empty image
+        img = np.zeros(np.max(np.int_(coords), axis=0) + 10)
+
+        # calculate the distance profile
+        dist = np.array([0] + list(_dist(coords[:-1], coords[1:])))
+        dist = np.cumsum(dist)
+        dist_img = np.zeros_like(img)
+        dist_img[tuple(np.int_(coords.transpose()))] = dist
+
+        # new distance profile
+        n_dist = np.linspace(dist[0], dist[-1], n_points)
+
+        # new coordinates
+        n_coords = [coords[0]]
+        for i in range(1, len(n_dist)):
+            diff_img = np.abs(dist_img - n_dist[i])
+            n_coords.append(np.array(np.where(diff_img == np.min(diff_img))).transpose()[0])
+
+        new_points.append(n_coords),
+        new_labels = new_labels + [lb] * len(n_coords)
+    return np.concatenate(new_points, axis=0), np.array(new_labels)
 
 
 def _interpolate_points(points, labels, n_interp=10):

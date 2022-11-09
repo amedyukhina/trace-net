@@ -322,9 +322,9 @@ class Trainer:
         probas = outputs['pred_logits'].softmax(-1)[0, :, 1:]
         keep = probas.max(-1).values > 0.7
         return plot_traces(imgs[0][0].cpu(), outputs['pred_traces'][0, keep].cpu(),
-                           return_image=True, b_line=self.config.b_line), \
+                           return_image=True, b_line=self.config.b_line, n_points=self.config.n_points), \
                plot_traces(imgs[0][0].cpu(), targets['trace'][0].cpu(),
-                           return_image=True, b_line=self.config.b_line)
+                           return_image=True, b_line=self.config.b_line, n_points=self.config.n_points)
 
     def log_images(self, iteration):
         if self.tbwriter is not None:

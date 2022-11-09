@@ -13,12 +13,12 @@ CLASSES = [
 ]
 
 
-def plot_traces(img, traces, return_image=False, size=6, b_line=False):
+def plot_traces(img, traces, return_image=False, size=6, b_line=False, n_points=2):
     img = normalize(img.numpy())
 
     if b_line:
         traces = bounding_line_to_points(traces)
-    traces = denormalize_points(traces.reshape(-1, 2), img.shape[-2:]).reshape(-1, 4)
+    traces = denormalize_points(traces.reshape(-1, 2), img.shape[-2:]).reshape(-1, n_points * 2)
 
     fig = plt.figure(figsize=(size, size))
     plt.imshow(img)

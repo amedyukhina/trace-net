@@ -6,7 +6,6 @@ import torch.nn.functional as F
 from torch import nn
 
 from .matcher import HungarianMatcher
-from .symmetric_distance import symmetric_distance
 
 
 class Criterion(nn.Module):
