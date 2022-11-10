@@ -36,6 +36,7 @@ DEFAULT_CONFIG = dict(
     gt_dir='gt',
     maxsize=512,
     n_points=2,
+    symmetric=True,
     weight_trace=5,
     wandb_api_key_file='path_to_my_wandb_api_key_file'
 )
@@ -61,7 +62,7 @@ class Trainer:
         self.net = DETR(n_points=self.config.n_points, n_classes=self.config.n_classes)
 
         # set loss function, validation metric, and forward pass depending on the model type
-        self.loss_function = Criterion(self.config.n_classes)
+        self.loss_function = Criterion(self.config.n_classes, symmetric=self.config.symmetric)
 
         # send the model and loss to cuda if available
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -80,7 +81,7 @@ class Trainer:
         )
 
         # set loss weight coefficients
-        self.weight_dict = {'loss_ce': 1, 'loss_trace': self.config.weight_trace}
+        self.weight_dict = {'loss_class': 1, 'loss_trace_distance': self.config.weight_trace}
         self.trained = False
 
     def __del__(self):

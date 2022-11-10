@@ -8,14 +8,15 @@ import torch
 from scipy.optimize import linear_sum_assignment
 from torch import nn
 
+from ..utils.points import get_first_and_last
+
 
 class HungarianMatcher(nn.Module):
 
-    def __init__(self, cost_class: float = 1, cost_coord: float = 1, symmetric=False):
+    def __init__(self, cost_class: float = 1, cost_coord: float = 1):
         super().__init__()
         self.cost_class = cost_class
         self.cost_coord = cost_coord
-        self.symmetric = symmetric
         assert cost_class != 0 or cost_coord != 0, "all costs cant be 0"
 
     @torch.no_grad()
@@ -24,10 +25,10 @@ class HungarianMatcher(nn.Module):
 
         # We flatten to compute the cost matrices in a batch
         out_prob = outputs["pred_logits"].flatten(0, 1).softmax(-1)  # [batch_size * num_queries, num_classes]
-        out_coord = outputs["pred_traces"].flatten(0, 1)  # [batch_size * num_queries, 4]
+        out_coord = get_first_and_last(outputs["pred_traces"].flatten(0, 1))
 
         # Also concat the target labels and boxes
-        tgt_bbox = torch.cat(targets['trace'])
+        tgt_coord = get_first_and_last(torch.cat(targets['trace']))
         tgt_ids = torch.cat(targets['trace_class'])
 
         # Compute the classification cost. Contrary to the loss, we don't use the NLL,
@@ -36,13 +37,10 @@ class HungarianMatcher(nn.Module):
         cost_class = -out_prob[:, tgt_ids]
 
         # Compute the L1 cost between boxes
-        # if self.b_line:
-        #     cost_coord = torch.cdist(out_coord, tgt_bbox, p=1)
-        # else:
-        #     cost_coord = torch.cdist(torch.stack([out_coord, out_coord.roll(2, -1)]),
-        #                             torch.stack([tgt_bbox, tgt_bbox]), p=1)
-        #     cost_coord = torch.min(cost_bbox, dim=0)[0]
-        cost_coord = torch.cdist(out_coord, tgt_bbox, p=1)
+
+        cost_coord = torch.cdist(torch.stack([out_coord, out_coord.roll(2, -1)]),
+                                 torch.stack([tgt_coord, tgt_coord]), p=1)
+        cost_coord = torch.min(cost_coord, dim=0)[0]
 
         # Final cost matrix
         C = self.cost_coord * cost_coord + self.cost_class * cost_class

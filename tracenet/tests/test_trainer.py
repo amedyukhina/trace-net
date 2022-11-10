@@ -16,8 +16,13 @@ def n_points(request):
     return request.param
 
 
-def test_trainer(example_data_path, model_path, n_points):
-    trainer = Trainer(data_dir=example_data_path, model_path=model_path,
+@pytest.fixture(params=[False, True])
+def symmetric(request):
+    return request.param
+
+
+def test_trainer(example_data_path, model_path, n_points, symmetric):
+    trainer = Trainer(data_dir=example_data_path, model_path=model_path, symmetric=symmetric,
                       train_dir='', val_dir='', batch_size=1, epochs=2, n_points=n_points)
     trainer.train()
     _assert_output(trainer)

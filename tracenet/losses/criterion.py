@@ -6,6 +6,8 @@ import torch.nn.functional as F
 from torch import nn
 
 from .matcher import HungarianMatcher
+from .symmetric_distance import symmetric_distance
+from ..utils.points import get_first_and_last
 
 
 class Criterion(nn.Module):
@@ -27,15 +29,15 @@ class Criterion(nn.Module):
         """
         super().__init__()
         self.num_classes = num_classes
-        self.matcher = matcher if matcher is not None else HungarianMatcher(symmetric=symmetric)
+        self.matcher = matcher if matcher is not None else HungarianMatcher()
         self.eos_coef = eos_coef
-        self.losses = losses if losses is not None else ['labels', 'traces', 'cardinality']
+        self.losses = losses if losses is not None else ['class', 'trace_distance', 'end_coords', 'cardinality']
         empty_weight = torch.ones(self.num_classes + 1)
         empty_weight[0] = self.eos_coef
         self.register_buffer('empty_weight', empty_weight)
         self.symmetric = symmetric
 
-    def loss_labels(self, outputs, targets, indices, **_):
+    def loss_class(self, outputs, targets, indices, **_):
         """Classification loss (NLL)
         targets dicts must contain the key "labels" containing a tensor of dim [nb_target_boxes]
         """
@@ -48,7 +50,7 @@ class Criterion(nn.Module):
         target_classes[idx] = target_classes_o
 
         loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight.to(src_logits.device))
-        losses = {'loss_ce': loss_ce}
+        losses = {'loss_class': loss_ce}
 
         return losses
 
@@ -67,7 +69,7 @@ class Criterion(nn.Module):
         losses = {'cardinality_error': card_err}
         return losses
 
-    def loss_traces(self, outputs, targets, indices, num_boxes, **_):
+    def loss_trace_distance(self, outputs, targets, indices, num_boxes, **_):
         """Compute the losses related to the trace coordinates.
            Targets dicts must contain the key "trace" containing a tensor of dim [nb_target_traces, n_points * 2]
            The target traces are expected in format (y1, x1, y2, x2 ... yn, xn), normalized by the image size.
@@ -76,12 +78,27 @@ class Criterion(nn.Module):
         idx = self._get_src_permutation_idx(indices)
         src_traces = outputs['pred_traces'][idx]
         target_traces = torch.cat([t[i] for t, (_, i) in zip(targets['trace'], indices)], dim=0)
-        # if self.b_line:
-        #     loss_trace = F.l1_loss(src_traces, target_traces, reduction='none')
-        # else:
-        #     loss_trace = symmetric_distance(src_traces, target_traces)
-        loss_trace = F.l1_loss(src_traces, target_traces, reduction='none')
-        losses = {'loss_trace': loss_trace.sum() / num_boxes}
+        if self.symmetric:
+            loss_trace = symmetric_distance(src_traces, target_traces)
+        else:
+            loss_trace = F.mse_loss(src_traces, target_traces, reduction='none')
+        losses = {'loss_trace_distance': loss_trace.sum() / num_boxes}
+
+        return losses
+
+    def loss_end_coords(self, outputs, targets, indices, num_boxes, **_):
+        """Compute the end coordinate distance.
+        """
+        assert 'pred_traces' in outputs
+        idx = self._get_src_permutation_idx(indices)
+        src_traces = outputs['pred_traces'][idx]
+        target_traces = torch.cat([t[i] for t, (_, i) in zip(targets['trace'], indices)], dim=0)
+        if self.symmetric:
+            loss_trace = symmetric_distance(get_first_and_last(src_traces), get_first_and_last(target_traces))
+        else:
+            loss_trace = F.mse_loss(get_first_and_last(src_traces), get_first_and_last(target_traces),
+                                    reduction='none')
+        losses = {'loss_end_coords': loss_trace.sum() / num_boxes}
 
         return losses
 
@@ -93,9 +110,10 @@ class Criterion(nn.Module):
 
     def get_loss(self, loss, outputs, targets, indices, num_boxes, **kwargs):
         loss_map = {
-            'labels': self.loss_labels,
+            'class': self.loss_class,
             'cardinality': self.loss_cardinality,
-            'traces': self.loss_traces,
+            'trace_distance': self.loss_trace_distance,
+            'end_coords': self.loss_end_coords
         }
         assert loss in loss_map, f'do you really want to compute {loss} loss?'
         return loss_map[loss](outputs, targets, indices=indices, num_boxes=num_boxes, **kwargs)
@@ -115,3 +133,4 @@ class Criterion(nn.Module):
             losses.update(self.get_loss(loss, outputs, targets, indices, num_boxes))
 
         return losses
+

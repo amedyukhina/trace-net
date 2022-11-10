@@ -17,3 +17,7 @@ def get_first_and_last_points(points, labels):
             npoints.append(point[0])
             npoints.append(point[-1])
     return torch.stack(npoints)
+
+
+def get_first_and_last(x):
+    return torch.concat([x[:,:2], x[:,-2:]], dim=-1)
