@@ -55,8 +55,6 @@ class Filament(torch.utils.data.Dataset):
             df = sample_instances(df, self.instance_ratio, seed=self.seeds[index], col_id=self.col_id)
 
         points, labels = df_to_points(df, self.cols, self.col_id)
-        if self.n_points > 2:
-            points, labels = make_points_equally_spaced(points, labels, self.n_points)
         target = dict(
             keypoints=points + padding,
             point_labels=labels,
@@ -64,6 +62,11 @@ class Filament(torch.utils.data.Dataset):
 
         if self.transforms:
             target, image = apply_transform(self.transforms, target, image)
+
+        if self.n_points > 2:
+            target['keypoints'], target['point_labels'] = make_points_equally_spaced(target['keypoints'],
+                                                                                     target['point_labels'],
+                                                                                     self.n_points)
 
         mask = torch.tensor(generate_labeled_mask(target['keypoints'],
                                                   target['point_labels'],
@@ -157,27 +160,28 @@ def make_points_equally_spaced(points, labels, n_points=5):
     for lb in np.unique(labels):
         ind = np.where(labels == lb)
         coords = points[ind]
+        if len(coords) > 1:
 
-        # create empty image
-        img = np.zeros(np.max(np.int_(coords), axis=0) + 10)
+            # create empty image
+            img = np.zeros(np.max(np.int_(coords), axis=0) + 10)
 
-        # calculate the distance profile
-        dist = np.array([0] + list(_dist(coords[:-1], coords[1:])))
-        dist = np.cumsum(dist)
-        dist_img = np.zeros_like(img)
-        dist_img[tuple(np.int_(coords.transpose()))] = dist
+            # calculate the distance profile
+            dist = np.array([0] + list(_dist(coords[:-1], coords[1:])))
+            dist = np.cumsum(dist)
+            dist_img = np.zeros_like(img)
+            dist_img[tuple(np.int_(coords.transpose()))] = dist
 
-        # new distance profile
-        n_dist = np.linspace(dist[0], dist[-1], n_points)
+            # new distance profile
+            n_dist = np.linspace(dist[0], dist[-1], n_points)
 
-        # new coordinates
-        n_coords = [coords[0]]
-        for i in range(1, len(n_dist)):
-            diff_img = np.abs(dist_img - n_dist[i])
-            n_coords.append(np.array(np.where(diff_img == np.min(diff_img))).transpose()[0])
+            # new coordinates
+            n_coords = [coords[0]]
+            for i in range(1, len(n_dist)):
+                diff_img = np.abs(dist_img - n_dist[i])
+                n_coords.append(np.array(np.where(diff_img == np.min(diff_img))).transpose()[0])
 
-        new_points.append(n_coords),
-        new_labels = new_labels + [lb] * len(n_coords)
+            new_points.append(n_coords),
+            new_labels = new_labels + [lb] * len(n_coords)
     return np.concatenate(new_points, axis=0), np.array(new_labels)
 
 
