@@ -52,8 +52,6 @@ def point_segment_dist(v, w, p):
     Pytorch implementation of this solution: https://stackoverflow.com/a/1501725/13120052
     """
     l2 = ((w - v) ** 2).sum(-1)  # distance squared
-    if l2 == 0:
-        return _dist(p, v)
     t = ((p - v) * (w - v)).sum(-1) / (l2 + 10**(-10))  # relative projection of point p onto the segment
     t = torch.stack([torch.ones(len(t)).to(t.device), t]).min(0)[0]  # clamp the projection
     t = torch.stack([torch.zeros(len(t)).to(t.device), t]).max(0)[0]
