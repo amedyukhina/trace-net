@@ -38,6 +38,8 @@ DEFAULT_CONFIG = dict(
     n_points=2,
     symmetric=True,
     weight_trace=5,
+    weight_spacing=2,
+    weight_ends=5,
     wandb_api_key_file='path_to_my_wandb_api_key_file'
 )
 
@@ -47,6 +49,12 @@ class Trainer:
         config = copy.deepcopy(DEFAULT_CONFIG)
         config.update(kwargs)
         self.config = argparse.Namespace(**config)
+
+        # set loss weight coefficients
+        self.weight_dict = {'loss_class': 1,
+                            'loss_trace_distance': self.config.weight_trace,
+                            'loss_point_spacing': self.config.weight_spacing,
+                            'loss_end_coords': self.config.weight_ends}
 
         # set up logging with tensorboard and wandb
         self.log_wandb = True if self.config.wandb_api_key_file is not None and \
@@ -62,7 +70,9 @@ class Trainer:
         self.net = DETR(n_points=self.config.n_points, n_classes=self.config.n_classes)
 
         # set loss function, validation metric, and forward pass depending on the model type
-        self.loss_function = Criterion(self.config.n_classes, symmetric=self.config.symmetric)
+        self.loss_function = Criterion(self.config.n_classes,
+                                       losses=self.weight_dict.keys(),
+                                       symmetric=self.config.symmetric)
 
         # send the model and loss to cuda if available
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -80,8 +90,6 @@ class Trainer:
             patience=self.config.patience
         )
 
-        # set loss weight coefficients
-        self.weight_dict = {'loss_class': 1, 'loss_trace_distance': self.config.weight_trace}
         self.trained = False
 
     def __del__(self):

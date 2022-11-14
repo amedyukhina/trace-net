@@ -27,16 +27,20 @@ def _dist_each(x, npoints):
     return torch.sqrt(((x[:, 2:] - x[:, :-2]) ** 2).reshape(-1, 2).sum(-1)).reshape(-1, npoints - 1)
 
 
-def point_order_loss(x):
+def line_straightness(x):
     n = int(x.shape[-1] / 2)
     dist_ends = torch.sqrt(((x[:, :2] - x[:, -2:]) ** 2).sum(-1))
     dist_each = _dist_each(x, n).sum(-1)
     return dist_each / dist_ends
 
 
-def point_spacing_loss(x):
+def point_spacing_std(x):
     n = int(x.shape[-1] / 2)
-    return _dist_each(x, n).std(-1)
+    d = _dist_each(x, n)
+    if d.shape[-1] > 1:
+        return d.std(-1)
+    else:
+        return torch.zeros(d.shape[0]).to(d.device)
 
 
 def _dist(x, y):
@@ -49,7 +53,7 @@ def point_segment_dist(v, w, p):
     """
     l2 = ((w - v) ** 2).sum(-1)  # distance squared
     t = ((p - v) * (w - v)).sum(-1) / l2  # relative projection of point p onto the segment
-    t = torch.stack([torch.ones(len(t)), t]).min(0)[0]  # clamp the projection
-    t = torch.stack([torch.zeros(len(t)), t]).max(0)[0]
+    t = torch.stack([torch.ones(len(t)).to(t.device), t]).min(0)[0]  # clamp the projection
+    t = torch.stack([torch.zeros(len(t)).to(t.device), t]).max(0)[0]
     proj = v + t.unsqueeze(-1) * (w - v)
     return _dist(p, proj)

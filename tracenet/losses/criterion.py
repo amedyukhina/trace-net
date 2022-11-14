@@ -7,7 +7,7 @@ from torch import nn
 
 from .matcher import HungarianMatcher
 from .symmetric_distance import symmetric_distance
-from ..utils.points import get_first_and_last
+from ..utils.points import get_first_and_last, point_segment_dist, point_spacing_std
 
 
 class Criterion(nn.Module):
@@ -31,7 +31,8 @@ class Criterion(nn.Module):
         self.num_classes = num_classes
         self.matcher = matcher if matcher is not None else HungarianMatcher()
         self.eos_coef = eos_coef
-        self.losses = losses if losses is not None else ['class', 'trace_distance', 'end_coords', 'cardinality']
+        self.losses = list(losses) + ['cardinality'] if losses is not None \
+            else ['loss_class', 'loss_trace_distance', 'loss_point_spacing', 'loss_end_coords', 'cardinality']
         empty_weight = torch.ones(self.num_classes + 1)
         empty_weight[0] = self.eos_coef
         self.register_buffer('empty_weight', empty_weight)
@@ -74,25 +75,32 @@ class Criterion(nn.Module):
            Targets dicts must contain the key "trace" containing a tensor of dim [nb_target_traces, n_points * 2]
            The target traces are expected in format (y1, x1, y2, x2 ... yn, xn), normalized by the image size.
         """
-        assert 'pred_traces' in outputs
-        idx = self._get_src_permutation_idx(indices)
-        src_traces = outputs['pred_traces'][idx]
-        target_traces = torch.cat([t[i] for t, (_, i) in zip(targets['trace'], indices)], dim=0)
-        if self.symmetric:
-            loss_trace = symmetric_distance(src_traces, target_traces)
-        else:
-            loss_trace = F.mse_loss(src_traces, target_traces, reduction='none')
+        src_traces, target_traces = self._get_matching_traces(outputs, targets, indices)
+        x = torch.stack([target_traces[:, 2 * i:2 * i + 4]
+                         for i in range(int(target_traces.shape[-1] / 2) - 1)])  # get all segments of the target
+        v = x[:, :, :2]  # first points of all target segments
+        w = x[:, :, 2:]  # second points of all target segments
+        points = [src_traces[:, 2 * j:2 * j + 2]
+                  for j in range(int(src_traces.shape[-1] / 2))]  # all points of the source trace
+        loss_trace = torch.stack([
+            torch.stack([point_segment_dist(vv, ww, p)
+                         for vv, ww in zip(v, w)]).min(0)[0]  # dist from each point to the closest segment
+            for p in points]).mean(0)  # average among all points
         losses = {'loss_trace_distance': loss_trace.sum() / num_boxes}
+
+        return losses
+
+    def loss_point_spacing(self, outputs, targets, indices, num_boxes, **_):
+        src_traces, _ = self._get_matching_traces(outputs, targets, indices)
+        loss_point_spacing = point_spacing_std(src_traces)
+        losses = {'loss_point_spacing': loss_point_spacing.sum() / num_boxes}
 
         return losses
 
     def loss_end_coords(self, outputs, targets, indices, num_boxes, **_):
         """Compute the end coordinate distance.
         """
-        assert 'pred_traces' in outputs
-        idx = self._get_src_permutation_idx(indices)
-        src_traces = outputs['pred_traces'][idx]
-        target_traces = torch.cat([t[i] for t, (_, i) in zip(targets['trace'], indices)], dim=0)
+        src_traces, target_traces = self._get_matching_traces(outputs, targets, indices)
         if self.symmetric:
             loss_trace = symmetric_distance(get_first_and_last(src_traces), get_first_and_last(target_traces))
         else:
@@ -102,6 +110,13 @@ class Criterion(nn.Module):
 
         return losses
 
+    def _get_matching_traces(self, outputs, targets, indices):
+        assert 'pred_traces' in outputs
+        idx = self._get_src_permutation_idx(indices)
+        src_traces = outputs['pred_traces'][idx]
+        target_traces = torch.cat([t[i] for t, (_, i) in zip(targets['trace'], indices)], dim=0)
+        return src_traces, target_traces
+
     def _get_src_permutation_idx(self, indices):
         # permute predictions following indices
         batch_idx = torch.cat([torch.full_like(src, i) for i, (src, _) in enumerate(indices)])
@@ -110,10 +125,11 @@ class Criterion(nn.Module):
 
     def get_loss(self, loss, outputs, targets, indices, num_boxes, **kwargs):
         loss_map = {
-            'class': self.loss_class,
+            'loss_class': self.loss_class,
             'cardinality': self.loss_cardinality,
-            'trace_distance': self.loss_trace_distance,
-            'end_coords': self.loss_end_coords
+            'loss_trace_distance': self.loss_trace_distance,
+            'loss_end_coords': self.loss_end_coords,
+            'loss_point_spacing': self.loss_point_spacing
         }
         assert loss in loss_map, f'do you really want to compute {loss} loss?'
         return loss_map[loss](outputs, targets, indices=indices, num_boxes=num_boxes, **kwargs)
@@ -133,4 +149,3 @@ class Criterion(nn.Module):
             losses.update(self.get_loss(loss, outputs, targets, indices, num_boxes))
 
         return losses
-
