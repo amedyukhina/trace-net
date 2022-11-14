@@ -40,8 +40,12 @@ if __name__ == '__main__':
                         help='Path to the wandb api key file')
     parser.add_argument('-np', '--n-points', type=int, default=2,
                         help='Number of points in the trace')
-    parser.add_argument('-wt', '--weight-trace', type=float, default=5.,
+    parser.add_argument('-wtt', '--weight-trace', type=float, default=1.,
                         help='Weight for the trace coordinates in the loss function')
+    parser.add_argument('-wte', '--weight-ends', type=float, default=2.,
+                        help='Weight for the trace end coordinates in the loss function')
+    parser.add_argument('-wts', '--weight-spacing', type=float, default=0.5,
+                        help='Weight for the trace spacing in the loss function')
     parser.add_argument('-sm', '--symmetric', action='store_true', help='calculate trace distance in a symmetric way')
 
     config = parser.parse_args()

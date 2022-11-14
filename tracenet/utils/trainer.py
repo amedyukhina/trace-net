@@ -37,9 +37,9 @@ DEFAULT_CONFIG = dict(
     maxsize=512,
     n_points=2,
     symmetric=True,
-    weight_trace=5,
-    weight_spacing=2,
-    weight_ends=5,
+    weight_trace=1,
+    weight_spacing=0.5,
+    weight_ends=2,
     wandb_api_key_file='path_to_my_wandb_api_key_file'
 )
 
