@@ -43,13 +43,13 @@ def _dist(x, y):
     return torch.sqrt(((x - y) ** 2).sum(-1))
 
 
-def dist_point_segment(v, w, p):
+def point_segment_dist(v, w, p):
     """
     Pytorch implementation of this solution: https://stackoverflow.com/a/1501725/13120052
     """
-    l2 = _dist(v, w)
-    t = ((p - v) * (w - v)).sum(-1) / l2
-    t = torch.stack([torch.ones(len(t)), t]).min(0)[0]
+    l2 = ((w - v) ** 2).sum(-1)  # distance squared
+    t = ((p - v) * (w - v)).sum(-1) / l2  # relative projection of point p onto the segment
+    t = torch.stack([torch.ones(len(t)), t]).min(0)[0]  # clamp the projection
     t = torch.stack([torch.zeros(len(t)), t]).max(0)[0]
     proj = v + t.unsqueeze(-1) * (w - v)
     return _dist(p, proj)
