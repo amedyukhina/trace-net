@@ -13,8 +13,8 @@ from tqdm import tqdm
 from .loader import get_loaders
 from ..losses.criterion import Criterion
 from ..models.detr import DETR
-from ..utils.plot import normalize, plot_traces
 from ..utils import is_nan
+from ..utils.plot import normalize, plot_traces
 
 DEFAULT_CONFIG = dict(
     epochs=20,
@@ -41,6 +41,7 @@ DEFAULT_CONFIG = dict(
     weight_trace=1,
     weight_spacing=0.5,
     weight_ends=2,
+    random_flip=False,
     wandb_api_key_file='path_to_my_wandb_api_key_file'
 )
 

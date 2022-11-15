@@ -21,7 +21,7 @@ class Filament(torch.utils.data.Dataset):
     """
 
     def __init__(self, image_files, ann_files, mean_std=(0, 1), transforms=None, intensity_transforms=None,
-                 instance_ratio=1, col_id='id', maxsize=512, n_points=2, cols=None):
+                 instance_ratio=1, col_id='id', maxsize=512, n_points=2, cols=None, random_flip=False):
         self.transforms = transforms
         self.intensity_transforms = intensity_transforms
         self.instance_ratio = instance_ratio
@@ -33,6 +33,7 @@ class Filament(torch.utils.data.Dataset):
         self.n_points = n_points
         self.cols = cols if cols is not None else ['y', 'x']
         self.mean, self.std = mean_std
+        self.random_flip = random_flip
 
     def __getitem__(self, index: int):
         image_id = self.image_files[index]
@@ -55,6 +56,10 @@ class Filament(torch.utils.data.Dataset):
             df = sample_instances(df, self.instance_ratio, seed=self.seeds[index], col_id=self.col_id)
 
         points, labels = df_to_points(df, self.cols, self.col_id)
+
+        if self.random_flip:
+            points, labels = randomly_flip_filaments(points, labels)
+            
         target = dict(
             keypoints=points + padding,
             point_labels=labels,
@@ -147,6 +152,22 @@ def generate_labeled_mask(points, labels, shape, n_interp=30):
 
 def _dist(x, y):
     return np.sqrt(np.sum((x - y) ** 2, axis=1))
+
+
+def randomly_flip_filaments(points, labels):
+    """
+    Randomly flip 50% of the filaments
+    """
+    new_points = []
+    new_labels = []
+    for lb in np.unique(labels):
+        ind = np.where(labels == lb)
+        coords = points[ind]
+        if np.random.rand() > 0.5:
+            coords = np.flip(coords, axis=0)
+        new_points.append(coords),
+        new_labels = new_labels + [lb] * len(coords)
+    return np.concatenate(new_points, axis=0), np.array(new_labels)
 
 
 def make_points_equally_spaced(points, labels, n_points=5):

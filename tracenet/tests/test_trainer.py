@@ -23,6 +23,6 @@ def symmetric(request):
 
 def test_trainer(example_data_path, model_path, n_points, symmetric):
     trainer = Trainer(data_dir=example_data_path, model_path=model_path, symmetric=symmetric,
-                      train_dir='', val_dir='', batch_size=1, epochs=2, n_points=n_points)
+                      train_dir='', val_dir='', batch_size=1, epochs=2, n_points=n_points, random_flip=True)
     trainer.train()
     _assert_output(trainer)
