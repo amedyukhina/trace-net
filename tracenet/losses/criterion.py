@@ -85,7 +85,17 @@ class Criterion(nn.Module):
         loss_trace = torch.stack([
             torch.stack([point_segment_dist(vv, ww, p)
                          for vv, ww in zip(v, w)]).min(0)[0]  # dist from each point to the closest segment
-            for p in points]).mean(0)  # average among all points
+            for p in points])  # calculate for all points
+
+        if (loss_trace == 0).any():
+            print('Loss Trace = 0:', loss_trace)
+            with torch.no_grad():
+                print(loss_trace.min(0))
+                print(loss_trace.min(1))
+                print(v)
+                print(w)
+                print(v == w)
+        loss_trace = loss_trace.mean(0)  # average among all points
         losses = {'loss_trace_distance': loss_trace.sum() / num_boxes}
 
         return losses
