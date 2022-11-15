@@ -14,6 +14,7 @@ from .loader import get_loaders
 from ..losses.criterion import Criterion
 from ..models.detr import DETR
 from ..utils.plot import normalize, plot_traces
+from ..utils import is_nan
 
 DEFAULT_CONFIG = dict(
     epochs=20,
@@ -178,6 +179,12 @@ class Trainer:
         for key in ['trace', 'trace_class']:
             targets[key] = [t.to(self.device) for t in targets[key]]
         loss_dict = self.loss_function(outputs, targets)
+        for k in loss_dict.keys():
+            if is_nan(loss_dict[k]):
+                print('Loss is NaN:', k, loss_dict[k])
+                print('targets:', targets['trace'])
+                print('outputs:', outputs['pred_traces'])
+                raise ValueError
         losses = sum(loss_dict[k] * self.weight_dict[k]
                      for k in loss_dict.keys() if k in self.weight_dict)
         return losses, loss_dict
