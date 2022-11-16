@@ -92,9 +92,11 @@ class Criterion(nn.Module):
             with torch.no_grad():
                 print(loss_trace.min(0))
                 print(loss_trace.min(1))
-                print(v)
-                print(w)
-                print(v == w)
+            print(points)
+            print(v)
+            print(w)
+            print(v == w)
+
         loss_trace = loss_trace.mean(0)  # average among all points
         losses = {'loss_trace_distance': loss_trace.sum() / num_boxes}
 
