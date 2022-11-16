@@ -44,7 +44,11 @@ def point_spacing_std(x):
 
 
 def _dist(x, y):
-    return torch.sqrt(((x - y) ** 2).sum(-1))
+    """
+    Manhattan distance to keep the scale but to avoid nan gradients at 0 for sqrt (in Cartesian distance)
+
+    """
+    return torch.abs(x - y).sum(-1)
 
 
 def point_segment_dist(v, w, p):

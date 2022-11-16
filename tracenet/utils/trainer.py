@@ -174,16 +174,6 @@ class Trainer:
     def forward_pass(self, batch):
         imgs1, imgs2, targets = batch
         outputs = self.net(imgs1.to(self.device))
-        if is_nan(outputs['pred_traces']) or is_nan(outputs['pred_logits']):
-            print('Output is NaN')
-            print('targets:', targets['trace'])
-            print('Input:', is_nan(imgs1), imgs1)
-            print('Model parameters:')
-            for i, param in enumerate(self.net.parameters()):
-                if is_nan(param):
-                    print(i, param)
-            print('outputs:', outputs['pred_traces'], outputs['pred_logits'])
-            raise ValueError
         return outputs, targets
 
     def calculate_losses(self, outputs, targets):
