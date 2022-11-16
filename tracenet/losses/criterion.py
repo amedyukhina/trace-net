@@ -105,8 +105,8 @@ class Criterion(nn.Module):
         if self.symmetric:
             loss_trace = symmetric_distance(get_first_and_last(src_traces), get_first_and_last(target_traces))
         else:
-            loss_trace = F.mse_loss(get_first_and_last(src_traces), get_first_and_last(target_traces),
-                                    reduction='none')
+            loss_trace = F.l1_loss(get_first_and_last(src_traces), get_first_and_last(target_traces),
+                                   reduction='none')
         losses = {'loss_end_coords': loss_trace.sum() / num_boxes}
 
         return losses
