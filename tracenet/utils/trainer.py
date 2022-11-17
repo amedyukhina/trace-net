@@ -41,6 +41,7 @@ DEFAULT_CONFIG = dict(
     weight_trace=1,
     weight_spacing=0.5,
     weight_ends=2,
+    weight_straightness=0.05,
     random_flip=False,
     wandb_api_key_file='path_to_my_wandb_api_key_file'
 )
@@ -56,7 +57,8 @@ class Trainer:
         self.weight_dict = {'loss_class': 1,
                             'loss_trace_distance': self.config.weight_trace,
                             'loss_point_spacing': self.config.weight_spacing,
-                            'loss_end_coords': self.config.weight_ends}
+                            'loss_end_coords': self.config.weight_ends,
+                            'loss_straightness': self.config.weight_straightness}
 
         # set up logging with tensorboard and wandb
         self.log_wandb = True if self.config.wandb_api_key_file is not None and \

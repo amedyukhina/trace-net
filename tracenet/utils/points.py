@@ -34,6 +34,17 @@ def line_straightness(x):
     return dist_each / dist_ends
 
 
+def _dist_each_mh(x, npoints):
+    return (torch.abs(x[:, 2:] - x[:, :-2]).reshape(-1, 2).sum(-1)).reshape(-1, npoints - 1)
+
+
+def line_straightness_mh(x):
+    n = int(x.shape[-1] / 2)
+    dist_ends = torch.abs(x[:, :2] - x[:, -2:]).sum(-1)
+    dist_each = _dist_each(x, n).sum(-1)
+    return dist_each / dist_ends
+
+
 def point_spacing_std(x):
     n = int(x.shape[-1] / 2)
     d = _dist_each(x, n)
@@ -45,7 +56,7 @@ def point_spacing_std(x):
 
 def _dist(x, y):
     """
-    Manhattan distance to keep the scale but to avoid nan gradients at 0 for sqrt (in Cartesian distance)
+    Manhattan distance to keep the scale but to avoid nan gradients at 0 for sqrt
 
     """
     return torch.abs(x - y).sum(-1)

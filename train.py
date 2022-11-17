@@ -46,6 +46,8 @@ if __name__ == '__main__':
                         help='Weight for the trace end coordinates in the loss function')
     parser.add_argument('-wts', '--weight-spacing', type=float, default=0.5,
                         help='Weight for the trace spacing in the loss function')
+    parser.add_argument('-wtst', '--weight-straightness', type=float, default=0.5,
+                        help='Weight for the trace straightness in the loss function')
     parser.add_argument('-sm', '--symmetric', action='store_true', help='calculate trace distance in a symmetric way')
     parser.add_argument('-fl', '--random-flip', action='store_true', help='randomly flip filaments')
 

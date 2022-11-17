@@ -7,7 +7,7 @@ from torch import nn
 
 from .matcher import HungarianMatcher
 from .symmetric_distance import symmetric_distance
-from ..utils.points import get_first_and_last, point_segment_dist, point_spacing_std
+from ..utils.points import get_first_and_last, point_segment_dist, point_spacing_std, line_straightness_mh
 
 
 class Criterion(nn.Module):
@@ -98,6 +98,13 @@ class Criterion(nn.Module):
 
         return losses
 
+    def loss_straightness(self, outputs, targets, indices, num_boxes, **_):
+        src_traces, _ = self._get_matching_traces(outputs, targets, indices)
+        loss_str = line_straightness_mh(src_traces)
+        losses = {'loss_straightness': loss_str.sum() / num_boxes}
+
+        return losses
+
     def loss_end_coords(self, outputs, targets, indices, num_boxes, **_):
         """Compute the end coordinate distance.
         """
@@ -130,7 +137,8 @@ class Criterion(nn.Module):
             'cardinality': self.loss_cardinality,
             'loss_trace_distance': self.loss_trace_distance,
             'loss_end_coords': self.loss_end_coords,
-            'loss_point_spacing': self.loss_point_spacing
+            'loss_point_spacing': self.loss_point_spacing,
+            'loss_straightness': self.loss_straightness
         }
         assert loss in loss_map, f'do you really want to compute {loss} loss?'
         return loss_map[loss](outputs, targets, indices=indices, num_boxes=num_boxes, **kwargs)
