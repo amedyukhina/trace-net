@@ -41,7 +41,7 @@ def _dist_each_mh(x, npoints):
 def line_straightness_mh(x):
     n = int(x.shape[-1] / 2)
     dist_ends = torch.abs(x[:, :2] - x[:, -2:]).sum(-1)
-    dist_each = _dist_each(x, n).sum(-1)
+    dist_each = _dist_each_mh(x, n).sum(-1)
     return dist_each / dist_ends
 
 
