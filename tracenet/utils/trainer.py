@@ -13,7 +13,6 @@ from tqdm import tqdm
 from .loader import get_loaders
 from ..losses.criterion import Criterion
 from ..models.detr import DETR
-from ..utils import is_nan
 from ..utils.plot import normalize, plot_traces
 
 DEFAULT_CONFIG = dict(
@@ -70,8 +69,10 @@ class Trainer:
             if self.config.log_tensorboard else None
 
         # set data loaders and the model
+        # set data loaders and the model
         self.train_dl, self.val_dl = get_loaders(**config)
-        self.net = DETR(n_points=self.config.n_points, n_classes=self.config.n_classes)
+        self.net = DETR(n_points=self.config.n_points, n_classes=self.config.n_classes,
+                        pretrained_model_path=self.config.pretrained_model_path)
 
         # set loss function, validation metric, and forward pass depending on the model type
         self.loss_function = Criterion(self.config.n_classes,

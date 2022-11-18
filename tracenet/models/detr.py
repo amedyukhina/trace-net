@@ -1,3 +1,6 @@
+import json
+import os
+
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -23,11 +26,19 @@ class MLP(nn.Module):
 
 class DETR(nn.Module):
 
-    def __init__(self, n_points=2, n_classes=1):
+    def __init__(self, n_points=2, n_classes=1, pretrained_model_path=None):
         super().__init__()
         self.detr = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=True)
         hdim = self.detr.transformer.d_model
         self.detr.class_embed = torch.nn.Linear(hdim, n_classes + 1)
+
+        if pretrained_model_path is not None and os.path.exists(pretrained_model_path):
+            with open(os.path.join(os.path.dirname(pretrained_model_path), 'config.json')) as f:
+                config = json.load(f)
+            self.detr.bbox_embed = MLP(hdim, hdim, config['n_points'] * 2, 3)
+            print(rf"Loading pretrained backbone weights from {pretrained_model_path}")
+            self.load_state_dict(torch.load(pretrained_model_path))
+
         self.detr.bbox_embed = MLP(hdim, hdim, n_points * 2, 3)
 
     def forward(self, x):
