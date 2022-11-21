@@ -35,21 +35,36 @@ class Metric:
         src_probs = outputs['pred_logits'][idx].softmax(-1)[:, 1:]
         keep = src_probs.max(-1).values > self.min_prob
         target_traces = torch.cat([t[i] for t, (_, i) in zip(targets['trace'], indices)], dim=0)
-        return src_traces[keep], target_traces[keep]
+        return src_traces[keep], target_traces[keep], idx[0][keep]
 
     @torch.no_grad()
-    def compute_cardinality_error(self, outputs, targets):
+    def get_src_and_target_lengths(self, outputs, targets):
         device = outputs['pred_logits'].device
         tgt_lengths = torch.as_tensor([v.shape[0] for v in targets["trace"]], device=device)
         probas = outputs['pred_logits'].softmax(-1)[:, :, 1:]
         keep = probas > self.min_prob
         src_lengths = torch.as_tensor([pr[k].shape[0] for pr, k in zip(probas, keep)], device=device)
+        return src_lengths.float(), tgt_lengths.float()
+
+    @torch.no_grad()
+    def compute_cardinality_error(self, src_lengths, tgt_lengths):
         card_err = torch.abs(src_lengths - tgt_lengths)
         self.append('cardinality error', card_err)
         self.append('relative cardinality error', card_err.float() / tgt_lengths)
 
+    @torch.no_grad()
+    def compute_pr(self, src_lengths, tgt_lengths, batch_idx):
+        matched = torch.as_tensor([(batch_idx == i).sum() for i in range(src_lengths.shape[0])])
+        recall = matched / tgt_lengths
+        precision = matched / src_lengths
+        f1score = 2 * precision * recall / (precision + recall)
+        self.append('Precision', precision)
+        self.append('Recall', recall)
+        self.append('F1 Score', f1score)
+
     def __call__(self, outputs, targets):
+        src_lengths, tgt_lengths = self.get_src_and_target_lengths(outputs, targets)
+        self.compute_cardinality_error(src_lengths, tgt_lengths)
         indices = self.matcher(outputs, targets)
-        # num_boxes = get_num_boxes(targets, outputs['pred_traces'].device)
-        # src_traces, target_traces = self.get_matching_traces(outputs, targets, indices)
-        self.compute_cardinality_error(outputs, targets)
+        src_traces, target_traces, batch_idx = self.get_matching_traces(outputs, targets, indices)
+        self.compute_pr(src_lengths, tgt_lengths, batch_idx)
