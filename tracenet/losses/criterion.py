@@ -5,6 +5,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+from ._utils import get_num_boxes, get_matching_traces, get_src_permutation_idx
 from .matcher import HungarianMatcher
 from .symmetric_distance import symmetric_distance
 from ..utils.points import get_first_and_last, point_segment_dist, point_spacing_std, line_straightness_mh
@@ -45,7 +46,7 @@ class Criterion(nn.Module):
         assert 'pred_logits' in outputs
         src_logits = outputs['pred_logits']
 
-        idx = self._get_src_permutation_idx(indices)
+        idx = get_src_permutation_idx(indices)
         target_classes_o = torch.cat([t[J] for t, (_, J) in zip(targets["trace_class"], indices)])
         target_classes = torch.full(src_logits.shape[:2], 0, dtype=torch.int64, device=src_logits.device)
         target_classes[idx] = target_classes_o
@@ -75,7 +76,7 @@ class Criterion(nn.Module):
            Targets dicts must contain the key "trace" containing a tensor of dim [nb_target_traces, n_points * 2]
            The target traces are expected in format (y1, x1, y2, x2 ... yn, xn), normalized by the image size.
         """
-        src_traces, target_traces = self._get_matching_traces(outputs, targets, indices)
+        src_traces, target_traces = get_matching_traces(outputs, targets, indices)
         x = torch.stack([target_traces[:, 2 * i:2 * i + 4]
                          for i in range(int(target_traces.shape[-1] / 2) - 1)])  # get all segments of the target
         v = x[:, :, :2]  # first points of all target segments
@@ -92,14 +93,14 @@ class Criterion(nn.Module):
         return losses
 
     def loss_point_spacing(self, outputs, targets, indices, num_boxes, **_):
-        src_traces, _ = self._get_matching_traces(outputs, targets, indices)
+        src_traces, _ = get_matching_traces(outputs, targets, indices)
         loss_point_spacing = point_spacing_std(src_traces)
         losses = {'loss_point_spacing': loss_point_spacing.sum() / num_boxes}
 
         return losses
 
     def loss_straightness(self, outputs, targets, indices, num_boxes, **_):
-        src_traces, _ = self._get_matching_traces(outputs, targets, indices)
+        src_traces, _ = get_matching_traces(outputs, targets, indices)
         loss_str = line_straightness_mh(src_traces)
         losses = {'loss_straightness': loss_str.sum() / num_boxes}
 
@@ -108,7 +109,7 @@ class Criterion(nn.Module):
     def loss_end_coords(self, outputs, targets, indices, num_boxes, **_):
         """Compute the end coordinate distance.
         """
-        src_traces, target_traces = self._get_matching_traces(outputs, targets, indices)
+        src_traces, target_traces = get_matching_traces(outputs, targets, indices)
         if self.symmetric:
             loss_trace = symmetric_distance(get_first_and_last(src_traces), get_first_and_last(target_traces))
         else:
@@ -117,19 +118,6 @@ class Criterion(nn.Module):
         losses = {'loss_end_coords': loss_trace.sum() / num_boxes}
 
         return losses
-
-    def _get_matching_traces(self, outputs, targets, indices):
-        assert 'pred_traces' in outputs
-        idx = self._get_src_permutation_idx(indices)
-        src_traces = outputs['pred_traces'][idx]
-        target_traces = torch.cat([t[i] for t, (_, i) in zip(targets['trace'], indices)], dim=0)
-        return src_traces, target_traces
-
-    def _get_src_permutation_idx(self, indices):
-        # permute predictions following indices
-        batch_idx = torch.cat([torch.full_like(src, i) for i, (src, _) in enumerate(indices)])
-        src_idx = torch.cat([src for (src, _) in indices])
-        return batch_idx, src_idx
 
     def get_loss(self, loss, outputs, targets, indices, num_boxes, **kwargs):
         loss_map = {
@@ -146,11 +134,7 @@ class Criterion(nn.Module):
     def forward(self, outputs, targets):
         # Retrieve the matching between the outputs of the last layer and the targets
         indices = self.matcher(outputs, targets)
-
-        # Compute the average number of target boxes across all nodes, for normalization purposes
-        num_boxes = sum(targets['trace'][i].shape[0] for i in range(len(targets['trace'])))
-        num_boxes = torch.as_tensor([num_boxes], dtype=torch.float, device=next(iter(outputs.values())).device)
-        num_boxes = torch.clamp(num_boxes, min=1).item()
+        num_boxes = get_num_boxes(targets, outputs['pred_traces'].device)
 
         # Compute all the requested losses
         losses = {}

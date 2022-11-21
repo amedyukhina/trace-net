@@ -59,7 +59,7 @@ class Filament(torch.utils.data.Dataset):
 
         if self.random_flip:
             points, labels = randomly_flip_filaments(points, labels)
-            
+
         target = dict(
             keypoints=points + padding,
             point_labels=labels,
