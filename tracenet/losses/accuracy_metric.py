@@ -2,6 +2,8 @@ import torch
 
 from ._utils import get_src_permutation_idx
 from .matcher import HungarianMatcher
+from .symmetric_distance import symmetric_distance
+from ..utils.points import get_first_and_last
 
 
 class Metric:
@@ -62,9 +64,16 @@ class Metric:
         self.append('Recall', recall)
         self.append('F1 Score', f1score)
 
+    @torch.no_grad()
+    def compute_end_distance(self, src_traces, target_traces, batch_idx):
+        end_dist = symmetric_distance(get_first_and_last(src_traces), get_first_and_last(target_traces))
+        end_dist = torch.as_tensor([end_dist[batch_idx == i].mean() for i in batch_idx.unique()])
+        self.append('end distance', end_dist)
+
     def __call__(self, outputs, targets):
         src_lengths, tgt_lengths = self.get_src_and_target_lengths(outputs, targets)
         self.compute_cardinality_error(src_lengths, tgt_lengths)
         indices = self.matcher(outputs, targets)
         src_traces, target_traces, batch_idx = self.get_matching_traces(outputs, targets, indices)
         self.compute_pr(src_lengths, tgt_lengths, batch_idx)
+        self.compute_end_distance(src_traces, target_traces, batch_idx)
