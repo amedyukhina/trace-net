@@ -3,7 +3,7 @@ import torch.nn.functional as F
 
 from ._utils import get_src_permutation_idx
 from .matcher import HungarianMatcher
-from ..utils.points import get_first_and_last
+from ..utils.points import get_first_and_last, trace_distance
 
 
 class Metric:
@@ -75,6 +75,11 @@ class Metric:
         self.append('end error', end_dist * self.dist_scaling)
 
     @torch.no_grad()
+    def compute_trace_distance(self, src_traces, target_traces):
+        trace_dist = trace_distance(src_traces, target_traces)
+        self.append('trace distance error', trace_dist * self.dist_scaling)
+
+    @torch.no_grad()
     def compute_length(self, src_traces, target_traces):
         src_len = curve_length(src_traces)
         tgt_len = curve_length(target_traces)
@@ -101,6 +106,7 @@ class Metric:
         src_traces, target_traces, batch_idx = self.get_matching_traces(outputs, targets, indices)
         self.compute_pr(src_lengths, tgt_lengths, batch_idx)
         self.compute_end_distance(src_traces, target_traces)
+        self.compute_trace_distance(src_traces, target_traces)
         self.compute_length(src_traces, target_traces)
 
 

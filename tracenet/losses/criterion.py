@@ -8,7 +8,7 @@ from torch import nn
 from ._utils import get_num_boxes, get_matching_traces, get_src_permutation_idx
 from .matcher import HungarianMatcher
 from .symmetric_distance import symmetric_distance
-from ..utils.points import get_first_and_last, point_segment_dist, point_spacing_std, line_straightness_mh
+from ..utils.points import get_first_and_last, trace_distance, point_spacing_std, line_straightness_mh
 
 
 class Criterion(nn.Module):
@@ -77,16 +77,7 @@ class Criterion(nn.Module):
            The target traces are expected in format (y1, x1, y2, x2 ... yn, xn), normalized by the image size.
         """
         src_traces, target_traces = get_matching_traces(outputs, targets, indices)
-        x = torch.stack([target_traces[:, 2 * i:2 * i + 4]
-                         for i in range(int(target_traces.shape[-1] / 2) - 1)])  # get all segments of the target
-        v = x[:, :, :2]  # first points of all target segments
-        w = x[:, :, 2:]  # second points of all target segments
-        points = [src_traces[:, 2 * j:2 * j + 2]
-                  for j in range(int(src_traces.shape[-1] / 2))]  # all points of the source trace
-        loss_trace = torch.stack([
-            torch.stack([point_segment_dist(vv, ww, p)
-                         for vv, ww in zip(v, w)]).min(0)[0]  # dist from each point to the closest segment
-            for p in points]).mean(0)  # average among all points
+        loss_trace = trace_distance(src_traces, target_traces)
 
         losses = {'loss_trace_distance': loss_trace.sum() / num_boxes}
 

@@ -72,3 +72,17 @@ def point_segment_dist(v, w, p):
     t = torch.stack([torch.zeros(len(t)).to(t.device), t]).max(0)[0]
     proj = v + t.unsqueeze(-1) * (w - v)
     return _dist(p, proj)
+
+
+def trace_distance(src_traces, target_traces):
+    x = torch.stack([target_traces[:, 2 * i:2 * i + 4]
+                     for i in range(int(target_traces.shape[-1] / 2) - 1)])  # get all segments of the target
+    v = x[:, :, :2]  # first points of all target segments
+    w = x[:, :, 2:]  # second points of all target segments
+    points = [src_traces[:, 2 * j:2 * j + 2]
+              for j in range(int(src_traces.shape[-1] / 2))]  # all points of the source trace
+    trace_dist = torch.stack([
+        torch.stack([point_segment_dist(vv, ww, p)
+                     for vv, ww in zip(v, w)]).min(0)[0]  # dist from each point to the closest segment
+        for p in points]).mean(0)  # average among all points
+    return trace_dist

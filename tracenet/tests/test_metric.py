@@ -36,7 +36,7 @@ def test_metric(trace_pair):
     assert metric.buffer['cardinality error'].shape[0] == 2 * len(targets['trace'])
     metric.aggregate()
     for key in ['cardinality error', 'relative cardinality error',
-                'Precision', 'Recall', 'F1 Score', 'end error',
+                'Precision', 'Recall', 'F1 Score', 'end error', 'trace distance error',
                 'filament length error', 'filament end error', 'curvature error']:
         assert key in metric.mean
         assert key in metric.std
@@ -44,7 +44,7 @@ def test_metric(trace_pair):
 
     for key in ['Precision', 'Recall', 'F1 Score']:
         assert metric.mean[key] == 1
-    for key in ['cardinality error', 'relative cardinality error', 'end error',
+    for key in ['cardinality error', 'relative cardinality error', 'end error', 'trace distance error',
                 'filament length error', 'filament end error', 'curvature error']:
         assert metric.mean[key] == 0
 
@@ -58,7 +58,8 @@ def test_metric(trace_pair):
     for key in ['Recall', 'F1 Score']:
         assert metric.mean[key] <= 1
     assert metric.mean['Precision'] == 1
-    for key in ['end error', 'filament length error', 'filament end error', 'curvature error']:
+    for key in ['end error', 'trace distance error', 'filament length error',
+                'filament end error', 'curvature error']:
         assert metric.mean[key] == 0
 
     print(metric.buffer)
