@@ -41,7 +41,7 @@ class Metric:
         return src_traces[keep], target_traces[keep], idx[0][keep]
 
     @torch.no_grad()
-    def get_src_and_target_lengths(self, outputs, targets):
+    def get_src_and_target_numbers(self, outputs, targets):
         device = outputs['pred_logits'].device
         tgt_lengths = torch.as_tensor([v.shape[0] for v in targets["trace"]], device=device)
         probas = outputs['pred_logits'].softmax(-1)[:, :, 1:]
@@ -87,20 +87,20 @@ class Metric:
         tgt_end_dist = dist_ends(target_traces)
         src_curvature = src_len / src_end_dist
         tgt_curvature = tgt_len / tgt_end_dist
-        self.append('filament length GT', src_len * self.dist_scaling)
-        self.append('filament length detected', tgt_len * self.dist_scaling)
-        self.append('end length GT', src_end_dist * self.dist_scaling)
-        self.append('end length detected', tgt_end_dist * self.dist_scaling)
+        self.append('filament length GT', tgt_len * self.dist_scaling)
+        self.append('filament length detected', src_len * self.dist_scaling)
+        self.append('end length GT', tgt_end_dist * self.dist_scaling)
+        self.append('end length detected', src_end_dist * self.dist_scaling)
         self.append('filament length error', torch.abs(src_len - tgt_len) * self.dist_scaling)
         self.append('relative filament length error', torch.abs(src_len - tgt_len) / tgt_len)
         self.append('filament end error', torch.abs(src_end_dist - tgt_end_dist) * self.dist_scaling)
         self.append('relative filament end error', torch.abs(src_end_dist - tgt_end_dist) / tgt_end_dist)
-        self.append('curvature GT', src_curvature)
-        self.append('curvature detected', tgt_curvature)
+        self.append('curvature GT', tgt_curvature)
+        self.append('curvature detected', src_curvature)
         self.append('curvature error', torch.abs(src_curvature - tgt_curvature))
 
     def __call__(self, outputs, targets):
-        src_lengths, tgt_lengths = self.get_src_and_target_lengths(outputs, targets)
+        src_lengths, tgt_lengths = self.get_src_and_target_numbers(outputs, targets)
         self.compute_cardinality_error(src_lengths, tgt_lengths)
         indices = self.matcher(outputs, targets)
         src_traces, target_traces, batch_idx = self.get_matching_traces(outputs, targets, indices)
