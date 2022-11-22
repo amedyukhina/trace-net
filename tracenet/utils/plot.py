@@ -12,12 +12,13 @@ CLASSES = [
 ]
 
 
-def plot_traces(img, traces, return_image=False, size=6, n_points=2):
+def plot_traces(img, traces, return_image=False, size=6, n_points=2, ax=None):
     img = normalize(img.numpy())
 
     traces = denormalize_points(traces.reshape(-1, 2), img.shape[-2:]).reshape(-1, n_points * 2)
 
-    fig = plt.figure(figsize=(size, size))
+    if ax is None:
+        fig = plt.figure(figsize=(size, size))
     plt.imshow(img)
     ax = plt.gca()
     colors = COLORS * 100
@@ -29,7 +30,6 @@ def plot_traces(img, traces, return_image=False, size=6, n_points=2):
 
     if return_image:
         return __get_canvas(fig)
-    plt.show()
 
 
 def plot_keypoints(img, points, labels, return_image=False, size=6):
