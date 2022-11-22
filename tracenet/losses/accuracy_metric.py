@@ -53,6 +53,8 @@ class Metric:
         card_err = torch.abs(src_lengths - tgt_lengths)
         self.append('cardinality error', card_err)
         self.append('relative cardinality error', card_err.float() / tgt_lengths)
+        self.append('number of filaments GT', tgt_lengths)
+        self.append('number of detected filaments', src_lengths)
 
     @torch.no_grad()
     def compute_pr(self, src_lengths, tgt_lengths, batch_idx):
