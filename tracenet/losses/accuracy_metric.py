@@ -8,10 +8,11 @@ from ..utils.points import get_first_and_last
 
 class Metric:
 
-    def __init__(self, matcher=None, min_prob=0.7):
+    def __init__(self, matcher=None, min_prob=0.7, dist_scaling=1.):
         self.buffer = dict()
         self.matcher = matcher if matcher is not None else HungarianMatcher()
         self.min_prob = min_prob
+        self.dist_scaling = dist_scaling
         self.mean = dict()
         self.std = dict()
 
@@ -71,10 +72,27 @@ class Metric:
     @torch.no_grad()
     def compute_end_distance(self, src_traces, target_traces):
         end_dist = symmetric_distance(get_first_and_last(src_traces), get_first_and_last(target_traces))
-        self.append('end distance', end_dist)
+        self.append('end error', end_dist * self.dist_scaling)
 
-    # @torch.no_grad()
-    # def compute_length(self, ):
+    @torch.no_grad()
+    def compute_length(self, src_traces, target_traces):
+        src_len = curve_length(src_traces)
+        tgt_len = curve_length(target_traces)
+        src_end_dist = dist_ends(src_traces)
+        tgt_end_dist = dist_ends(target_traces)
+        src_curvature = src_len / src_end_dist
+        tgt_curvature = tgt_len / tgt_end_dist
+        self.append('filament length GT', src_len * self.dist_scaling)
+        self.append('filament length detected', tgt_len * self.dist_scaling)
+        self.append('end length GT', src_end_dist * self.dist_scaling)
+        self.append('end length detected', tgt_end_dist * self.dist_scaling)
+        self.append('filament length error', torch.abs(src_len - tgt_len) * self.dist_scaling)
+        self.append('relative filament length error', torch.abs(src_len - tgt_len) / tgt_len)
+        self.append('filament end error', torch.abs(src_end_dist - tgt_end_dist) * self.dist_scaling)
+        self.append('relative filament end error', torch.abs(src_end_dist - tgt_end_dist) / tgt_end_dist)
+        self.append('curvature GT', src_curvature)
+        self.append('curvature detected', tgt_curvature)
+        self.append('curvature error', torch.abs(src_curvature - tgt_curvature))
 
     def __call__(self, outputs, targets):
         src_lengths, tgt_lengths = self.get_src_and_target_lengths(outputs, targets)
@@ -83,6 +101,7 @@ class Metric:
         src_traces, target_traces, batch_idx = self.get_matching_traces(outputs, targets, indices)
         self.compute_pr(src_lengths, tgt_lengths, batch_idx)
         self.compute_end_distance(src_traces, target_traces)
+        self.compute_length(src_traces, target_traces)
 
 
 def symmetric_distance(source, target):
@@ -94,3 +113,12 @@ def symmetric_distance(source, target):
     ind = ls.argmin(0)
     return torch.sqrt(((sources[ind, torch.arange(len(ind))] -
                         target) ** 2).reshape(-1, 2).sum(-1)).reshape(-1, npoints).mean(-1)
+
+
+def curve_length(x):
+    n = int(x.shape[-1] / 2)
+    return torch.sqrt(((x[:, 2:] - x[:, :-2]) ** 2).reshape(-1, 2).sum(-1)).reshape(-1, n - 1).sum(-1)
+
+
+def dist_ends(x):
+    return torch.sqrt(((x[:, :2] - x[:, -2:]) ** 2).sum(-1))
