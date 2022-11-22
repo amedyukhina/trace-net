@@ -12,11 +12,12 @@ def n_points(request):
 
 @pytest.fixture(params=[2, 3])
 def trace_pair(request, n_points):
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     n_traces = np.random.randint(5, 20, request.param)
-    targets = dict({'trace': [torch.rand(n, n_points * 2) for n in n_traces],
-                    'trace_class': [torch.ones(n).long() for n in n_traces]})
-    outputs = dict({'pred_traces': torch.rand(len(n_traces), 100, n_points * 2),
-                    'pred_logits': torch.rand(len(n_traces), 100, 2)})
+    targets = dict({'trace': [torch.rand(n, n_points * 2).to(device) for n in n_traces],
+                    'trace_class': [torch.ones(n).to(device).long() for n in n_traces]})
+    outputs = dict({'pred_traces': torch.rand(len(n_traces), 100, n_points * 2).to(device),
+                    'pred_logits': torch.rand(len(n_traces), 100, 2).to(device)})
 
     for i in range(len(n_traces)):
         len_trace = targets['trace'][i].shape[0]
@@ -25,14 +26,6 @@ def trace_pair(request, n_points):
         outputs['pred_logits'][i][:len_trace, 1] = 100
 
     return outputs, targets
-
-
-def compute_metric(dl, net, device, metric):
-    for imgs, _, targets in dl:
-        outputs = net(imgs.to(device))
-        for key in ['trace', 'trace_class']:
-            targets[key] = [t.to(device) for t in targets[key]]
-        metric(outputs, targets)
 
 
 def test_metric(trace_pair):

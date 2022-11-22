@@ -56,7 +56,8 @@ class Metric:
 
     @torch.no_grad()
     def compute_pr(self, src_lengths, tgt_lengths, batch_idx):
-        matched = torch.as_tensor([(batch_idx == i).sum() for i in range(src_lengths.shape[0])])
+        matched = torch.as_tensor([(batch_idx == i).sum() for i in range(src_lengths.shape[0])],
+                                  device=tgt_lengths.device)
         recall = matched / tgt_lengths
         precision = matched / src_lengths
         f1score = 2 * precision * recall / (precision + recall)
