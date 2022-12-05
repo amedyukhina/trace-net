@@ -28,6 +28,18 @@ def trace_pair(request, n_points):
     return outputs, targets
 
 
+@pytest.fixture
+def trace_pair_bezier(n_points):
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    n_traces = np.random.randint(5, 20, 3)
+    targets = dict({'trace': [torch.rand(n, n_points * 2).to(device) for n in n_traces],
+                    'trace_class': [torch.ones(n).to(device).long() for n in n_traces]})
+    outputs = dict({'pred_traces': torch.rand(len(n_traces), 100, 8).to(device),
+                    'pred_logits': torch.rand(len(n_traces), 100, 2).to(device)})
+
+    return outputs, targets
+
+
 def test_metric(trace_pair):
     metric = Metric(min_prob=0.99)
     outputs, targets = trace_pair
@@ -62,4 +74,14 @@ def test_metric(trace_pair):
                 'filament end error', 'curvature error']:
         assert metric.mean[key] == 0
 
-    print(metric.buffer)
+
+def test_metric_bezier(trace_pair_bezier):
+    metric = Metric(min_prob=0.5, bezier=True)
+    outputs, targets = trace_pair_bezier
+    metric(outputs, targets)
+    metric.aggregate()
+    for key in ['cardinality error', 'relative cardinality error',
+                'Precision', 'Recall', 'F1 Score', 'end error', 'trace distance error',
+                'filament length error', 'filament end error', 'curvature error']:
+        assert key in metric.mean
+        assert key in metric.std

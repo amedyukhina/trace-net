@@ -3,18 +3,19 @@ import torch.nn.functional as F
 
 from ._utils import get_src_permutation_idx
 from .matcher import HungarianMatcher
-from ..utils.points import get_first_and_last, trace_distance
+from ..utils.points import get_first_and_last, trace_distance, bezier_curve_from_control_points, trace_distance_param
 
 
 class Metric:
 
-    def __init__(self, matcher=None, min_prob=0.7, dist_scaling=1.):
+    def __init__(self, matcher=None, bezier=False, min_prob=0.7, dist_scaling=1.):
         self.buffer = dict()
         self.matcher = matcher if matcher is not None else HungarianMatcher()
         self.min_prob = min_prob
         self.dist_scaling = dist_scaling
         self.mean = dict()
         self.std = dict()
+        self.bezier = bezier
 
     def reset(self):
         self.buffer = dict()
@@ -76,7 +77,11 @@ class Metric:
 
     @torch.no_grad()
     def compute_trace_distance(self, src_traces, target_traces):
-        trace_dist = trace_distance(src_traces, target_traces)
+        if self.bezier:
+            trace_dist = trace_distance_param(src_traces.reshape(src_traces.shape[0], -1, 2),
+                                              target_traces.reshape(target_traces.shape[0], -1, 2))
+        else:
+            trace_dist = trace_distance(src_traces, target_traces)
         self.append('trace distance error', trace_dist * self.dist_scaling)
 
     @torch.no_grad()
@@ -104,6 +109,9 @@ class Metric:
         self.compute_cardinality_error(src_lengths, tgt_lengths)
         indices = self.matcher(outputs, targets)
         src_traces, target_traces, batch_idx = self.get_matching_traces(outputs, targets, indices)
+        if self.bezier:
+            assert src_traces.shape[1] == 8
+            src_traces = bezier_curve_from_control_points(src_traces.reshape(-1, 4, 2), 20).reshape(-1, 40)
         self.compute_pr(src_lengths, tgt_lengths, batch_idx)
         self.compute_end_distance(src_traces, target_traces)
         self.compute_trace_distance(src_traces, target_traces)
