@@ -14,6 +14,7 @@ from .loader import get_loaders
 from ..losses.criterion import Criterion
 from ..models.detr import DETR
 from ..utils.plot import normalize, plot_traces
+from ..utils.points import bezier_curve_from_control_points
 
 DEFAULT_CONFIG = dict(
     epochs=20,
@@ -236,7 +237,12 @@ class Trainer:
     def _postproc_traces(self, imgs, outputs, targets):
         probas = outputs['pred_logits'].softmax(-1)[0, :, 1:]
         keep = probas.max(-1).values > 0.7
-        return plot_traces(imgs[0][0].cpu(), outputs['pred_traces'][0, keep].cpu(),
+        pred_traces = outputs['pred_traces'][0, keep].cpu()
+        if self.config.bezier:
+            n = 20
+            assert pred_traces.shape[-1] == 8
+            pred_traces = bezier_curve_from_control_points(pred_traces.reshape(-1, 4, 2), n).reshape(-1, n * 2)
+        return plot_traces(imgs[0][0].cpu(), pred_traces,
                            return_image=True, n_points=self.config.n_points), \
                plot_traces(imgs[0][0].cpu(), targets['trace'][0].cpu(),
                            return_image=True, n_points=self.config.n_points)
