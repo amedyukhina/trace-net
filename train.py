@@ -50,6 +50,7 @@ if __name__ == '__main__':
                         help='Weight for the trace straightness in the loss function')
     parser.add_argument('-sm', '--symmetric', action='store_true', help='calculate trace distance in a symmetric way')
     parser.add_argument('-fl', '--random-flip', action='store_true', help='randomly flip filaments')
+    parser.add_argument('-bz', '--bezier', action='store_true', help='represent traces as Bezier curves')
 
     config = parser.parse_args()
     config.mean_std = tuple([float(i) for i in config.mean_std.split(',')])
