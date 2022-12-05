@@ -42,6 +42,7 @@ DEFAULT_CONFIG = dict(
     weight_ends=2,
     weight_straightness=0.05,
     random_flip=False,
+    bezier=False,
     wandb_api_key_file='path_to_my_wandb_api_key_file'
 )
 
@@ -55,9 +56,10 @@ class Trainer:
         # set loss weight coefficients
         self.weight_dict = {'loss_class': 1,
                             'loss_trace_distance': self.config.weight_trace,
-                            'loss_point_spacing': self.config.weight_spacing,
+                            # 'loss_point_spacing': self.config.weight_spacing,
                             'loss_end_coords': self.config.weight_ends,
-                            'loss_straightness': self.config.weight_straightness}
+                            # 'loss_straightness': self.config.weight_straightness
+                            }
 
         # set up logging with tensorboard and wandb
         self.log_wandb = True if self.config.wandb_api_key_file is not None and \
@@ -71,13 +73,15 @@ class Trainer:
         # set data loaders and the model
         # set data loaders and the model
         self.train_dl, self.val_dl = get_loaders(**config)
-        self.net = DETR(n_points=self.config.n_points, n_classes=self.config.n_classes,
+        self.net = DETR(n_points=self.config.n_points if self.config.bezier is False else 4,
+                        n_classes=self.config.n_classes,
                         pretrained_model_path=self.config.pretrained_model_path)
 
         # set loss function, validation metric, and forward pass depending on the model type
         self.loss_function = Criterion(self.config.n_classes,
                                        losses=self.weight_dict.keys(),
-                                       symmetric=self.config.symmetric)
+                                       symmetric=self.config.symmetric,
+                                       bezier=self.config.bezier)
 
         # send the model and loss to cuda if available
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')

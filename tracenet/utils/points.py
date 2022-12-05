@@ -86,3 +86,16 @@ def trace_distance(src_traces, target_traces):
                      for vv, ww in zip(v, w)]).min(0)[0]  # dist from each point to the closest segment
         for p in points]).mean(0)  # average among all points
     return trace_dist
+
+
+def trace_distance_param(src_traces, target_traces):
+    trace_dist = torch.stack([torch.abs(target_traces[:, i].unsqueeze(1) - src_traces).sum(-1).min(-1)[0]
+                              for i in range(target_traces.shape[1])]).mean(0)
+    return trace_dist
+
+
+def bezier_curve_from_control_points(cpoints, n_points=10):
+    t = torch.linspace(0, 1, n_points).unsqueeze(1).unsqueeze(0).to(cpoints.device)
+    b = (1 - t) ** 3 * cpoints[:, 0].unsqueeze(1) + 3 * (1 - t) ** 2 * t * cpoints[:, 1].unsqueeze(1) + \
+        3 * (1 - t) * t ** 2 * cpoints[:, 2].unsqueeze(1) + t ** 3 * cpoints[:, 3].unsqueeze(1)
+    return b

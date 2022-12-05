@@ -8,7 +8,14 @@ from torch import nn
 from ._utils import get_num_boxes, get_matching_traces, get_src_permutation_idx
 from .matcher import HungarianMatcher
 from .symmetric_distance import symmetric_distance
-from ..utils.points import get_first_and_last, trace_distance, point_spacing_std, line_straightness_mh
+from ..utils.points import (
+    get_first_and_last,
+    trace_distance,
+    trace_distance_param,
+    point_spacing_std,
+    line_straightness_mh,
+    bezier_curve_from_control_points
+)
 
 
 class Criterion(nn.Module):
@@ -20,7 +27,8 @@ class Criterion(nn.Module):
         2) compute loss between each matched pair
     """
 
-    def __init__(self, num_classes, matcher=None, losses=None, eos_coef=0.1, symmetric=False):
+    def __init__(self, num_classes, matcher=None, losses=None, eos_coef=0.1,
+                 symmetric=False, bezier=False):
         """ Create the criterion.
         Parameters:
             num_classes: number of object categories, omitting the special no-object category
@@ -38,6 +46,7 @@ class Criterion(nn.Module):
         empty_weight[0] = self.eos_coef
         self.register_buffer('empty_weight', empty_weight)
         self.symmetric = symmetric
+        self.bezier = bezier
 
     def loss_class(self, outputs, targets, indices, **_):
         """Classification loss (NLL)
@@ -77,7 +86,12 @@ class Criterion(nn.Module):
            The target traces are expected in format (y1, x1, y2, x2 ... yn, xn), normalized by the image size.
         """
         src_traces, target_traces = get_matching_traces(outputs, targets, indices)
-        loss_trace = trace_distance(src_traces, target_traces)
+        if self.bezier:
+            assert src_traces.shape[1] == 8
+            b = bezier_curve_from_control_points(src_traces.reshape(-1, 4, 2), 20)
+            loss_trace = trace_distance_param(b, target_traces.reshape(target_traces.shape[0], -1, 2))
+        else:
+            loss_trace = trace_distance(src_traces, target_traces)
 
         losses = {'loss_trace_distance': loss_trace.sum() / num_boxes}
 
