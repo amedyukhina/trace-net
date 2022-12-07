@@ -30,7 +30,7 @@ def test_trainer(example_data_path, model_path, n_points, symmetric):
 
 def test_trainer_bezier(example_data_path, model_path):
     trainer = Trainer(data_dir=example_data_path, model_path=model_path, symmetric=False, bezier=True,
-                      train_dir='', val_dir='', batch_size=1, epochs=2, n_points=5, random_flip=True)
+                      train_dir='', val_dir='', batch_size=1, epochs=2, n_points=15, random_flip=True)
     trainer.train()
     _assert_output(trainer)
 

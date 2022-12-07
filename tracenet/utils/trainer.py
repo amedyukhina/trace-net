@@ -243,7 +243,7 @@ class Trainer:
             assert pred_traces.shape[-1] == 8
             pred_traces = bezier_curve_from_control_points(pred_traces.reshape(-1, 4, 2), n).reshape(-1, n * 2)
         return plot_traces(imgs[0][0].cpu(), pred_traces,
-                           return_image=True, n_points=self.config.n_points), \
+                           return_image=True, n_points=pred_traces.shape[-1]//2), \
                plot_traces(imgs[0][0].cpu(), targets['trace'][0].cpu(),
                            return_image=True, n_points=self.config.n_points)
 
