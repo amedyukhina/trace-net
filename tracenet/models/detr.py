@@ -36,7 +36,7 @@ class DETR(nn.Module):
             with open(os.path.join(os.path.dirname(pretrained_model_path), 'config.json')) as f:
                 config = json.load(f)
             self.detr.bbox_embed = MLP(hdim, hdim,
-                                       config['n_points'] * 2 if not config['bezier'] else 4,
+                                       config['n_points'] * 2 if not config['bezier'] else 8,
                                        3)
             print(rf"Loading pretrained backbone weights from {pretrained_model_path}")
             self.load_state_dict(torch.load(pretrained_model_path))
