@@ -26,9 +26,9 @@ class MLP(nn.Module):
 
 class DETR(nn.Module):
 
-    def __init__(self, n_points=2, n_classes=1, pretrained_model_path=None):
+    def __init__(self, n_points=2, n_classes=1, pretrained=True, pretrained_model_path=None):
         super().__init__()
-        self.detr = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=True)
+        self.detr = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=pretrained)
         hdim = self.detr.transformer.d_model
         self.detr.class_embed = torch.nn.Linear(hdim, n_classes + 1)
 

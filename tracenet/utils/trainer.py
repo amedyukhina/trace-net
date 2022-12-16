@@ -44,6 +44,7 @@ DEFAULT_CONFIG = dict(
     weight_straightness=0.05,
     random_flip=False,
     bezier=False,
+    non_pretrained=False,
     wandb_api_key_file='path_to_my_wandb_api_key_file'
 )
 
@@ -76,6 +77,7 @@ class Trainer:
         self.train_dl, self.val_dl = get_loaders(**config)
         self.net = DETR(n_points=self.config.n_points if self.config.bezier is False else 4,
                         n_classes=self.config.n_classes,
+                        pretrained=not self.config.non_pretrained,
                         pretrained_model_path=self.config.pretrained_model_path)
 
         # set loss function, validation metric, and forward pass depending on the model type
