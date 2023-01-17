@@ -18,6 +18,8 @@ if __name__ == '__main__':
                         help='Subdirectory for ground truth data')
     parser.add_argument('-ms', '--mean-std', type=str, default="0,1",
                         help='Mean and standard deviation of the dataset, for normalization, separated by ","')
+    parser.add_argument('-per', '--percentiles', type=str, default="0,100",
+                        help='Percentiles for normalization, separated by ","')
     parser.add_argument('-mp', '--model-path', type=str,
                         help='Directory for model checkpoints', default='model')
     parser.add_argument('-mpp', '--pretrained-model-path', type=str,
@@ -55,6 +57,7 @@ if __name__ == '__main__':
 
     config = parser.parse_args()
     config.mean_std = tuple([float(i) for i in config.mean_std.split(',')])
+    config.percentiles = tuple([float(i) for i in config.percentiles.split(',')])
     config = vars(config)
 
     print('\nThe following are the parameters that will be used:')

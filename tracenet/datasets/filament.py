@@ -20,8 +20,9 @@ class Filament(torch.utils.data.Dataset):
         - List of x and y coordinates of the filaments as a csv file (include "x", "y" and "id" columns).
     """
 
-    def __init__(self, image_files, ann_files, mean_std=(0, 1), transforms=None, intensity_transforms=None,
-                 instance_ratio=1, col_id='id', maxsize=512, n_points=2, cols=None, random_flip=False):
+    def __init__(self, image_files, ann_files, mean_std=(0, 1), percentiles=(0, 100), transforms=None,
+                 intensity_transforms=None, instance_ratio=1, col_id='id', maxsize=512, n_points=2,
+                 cols=None, random_flip=False):
         self.transforms = transforms
         self.intensity_transforms = intensity_transforms
         self.instance_ratio = instance_ratio
@@ -33,6 +34,7 @@ class Filament(torch.utils.data.Dataset):
         self.n_points = n_points
         self.cols = cols if cols is not None else ['y', 'x']
         self.mean, self.std = mean_std
+        self.percentiles = percentiles
         self.random_flip = random_flip
 
     def __getitem__(self, index: int):
@@ -42,7 +44,8 @@ class Filament(torch.utils.data.Dataset):
         image = io.imread(image_id).astype(np.float32)
         if len(image.shape) > 2:
             image = np.max(image, axis=-1)
-        image = (image - self.mean) / self.std
+        # image = (image - self.mean) / self.std
+        image = _normalize(image, p1=self.percentiles[0], p2=self.percentiles[1])
 
         if np.max(image.shape) > self.maxsize:
             raise ValueError(rf"Image size must be less than or equal to {self.maxsize};"
@@ -112,6 +115,14 @@ class Filament(torch.utils.data.Dataset):
 
     def __len__(self) -> int:
         return len(self.image_files)
+
+
+def _normalize(img, p1=0, p2=100):
+    valmin = np.percentile(img, p1)
+    valmax = np.percentile(img, p2)
+    img = img - valmin
+    img = img / valmax
+    return np.clip(img, 0, 1)
 
 
 def sample_instances(df, instance_ratio, seed, col_id, min_instances=2):

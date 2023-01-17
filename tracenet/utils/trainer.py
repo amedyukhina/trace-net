@@ -22,6 +22,7 @@ DEFAULT_CONFIG = dict(
     lr=0.0001,
     n_classes=1,
     mean_std=(0, 1),
+    percentiles=(0, 100),
     weight_decay=0.0005,
     factor=0.1,
     patience=10,
@@ -245,7 +246,7 @@ class Trainer:
             assert pred_traces.shape[-1] == 8
             pred_traces = bezier_curve_from_control_points(pred_traces.reshape(-1, 4, 2), n).reshape(-1, n * 2)
         return plot_traces(imgs[0][0].cpu(), pred_traces,
-                           return_image=True, n_points=pred_traces.shape[-1]//2), \
+                           return_image=True, n_points=pred_traces.shape[-1] // 2), \
                plot_traces(imgs[0][0].cpu(), targets['trace'][0].cpu(),
                            return_image=True, n_points=self.config.n_points)
 
