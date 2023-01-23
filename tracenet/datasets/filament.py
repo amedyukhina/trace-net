@@ -200,7 +200,7 @@ def make_points_equally_spaced(points, labels, n_points=5):
             # calculate the distance profile
             dist = np.array([0] + list(_dist(coords[:-1], coords[1:])))
             dist = np.cumsum(dist)
-            dist_img = np.zeros_like(img)
+            dist_img = np.ones_like(img) * 10000.
             dist_img[tuple(np.int_(coords.transpose()))] = dist
 
             # new distance profile
