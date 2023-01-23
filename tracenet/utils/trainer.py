@@ -61,7 +61,7 @@ class Trainer:
                             'loss_trace_distance': self.config.weight_trace,
                             # 'loss_point_spacing': self.config.weight_spacing,
                             'loss_end_coords': self.config.weight_ends,
-                            # 'loss_straightness': self.config.weight_straightness
+                            'loss_straightness': self.config.weight_straightness
                             }
 
         # set up logging with tensorboard and wandb
