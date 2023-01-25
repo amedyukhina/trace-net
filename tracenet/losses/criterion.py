@@ -120,7 +120,7 @@ class Criterion(nn.Module):
         else:
             loss_trace = F.l1_loss(get_first_and_last(src_traces), get_first_and_last(target_traces),
                                    reduction='none')
-        losses = {'loss_end_coords': loss_trace.sum() / num_boxes}
+        losses = {'loss_end_coords': loss_trace.sum() / num_boxes / 4}  # divide by 4: 2 points x 2 dimensions
 
         return losses
 
