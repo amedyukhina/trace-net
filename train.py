@@ -53,7 +53,8 @@ if __name__ == '__main__':
     parser.add_argument('-sm', '--symmetric', action='store_true', help='calculate trace distance in a symmetric way')
     parser.add_argument('-fl', '--random-flip', action='store_true', help='randomly flip filaments')
     parser.add_argument('-bz', '--bezier', action='store_true', help='represent traces as Bezier curves')
-    parser.add_argument('-npr', '--non-pretrained', action='store_true', help='use non-pretrained DERT')
+    parser.add_argument('-npr', '--non-pretrained', action='store_true', help='use non-pretrained DETR')
+    parser.add_argument('-seed', '--seed', type=float, help='Random seed', default=None)
 
     config = parser.parse_args()
     config.mean_std = tuple([float(i) for i in config.mean_std.split(',')])

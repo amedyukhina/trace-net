@@ -46,7 +46,8 @@ DEFAULT_CONFIG = dict(
     random_flip=False,
     bezier=False,
     non_pretrained=False,
-    wandb_api_key_file='path_to_my_wandb_api_key_file'
+    wandb_api_key_file='path_to_my_wandb_api_key_file',
+    seed=None
 )
 
 
@@ -55,6 +56,9 @@ class Trainer:
         config = copy.deepcopy(DEFAULT_CONFIG)
         config.update(kwargs)
         self.config = argparse.Namespace(**config)
+
+        np.random.seed(self.config.seed)
+        torch.manual_seed(self.config.seed)
 
         # set loss weight coefficients
         self.weight_dict = {'loss_class': 1,
