@@ -57,8 +57,9 @@ class Trainer:
         config.update(kwargs)
         self.config = argparse.Namespace(**config)
 
-        np.random.seed(self.config.seed)
-        torch.manual_seed(self.config.seed)
+        if self.config.seed is not None:
+            np.random.seed(self.config.seed)
+            torch.manual_seed(self.config.seed)
 
         # set loss weight coefficients
         self.weight_dict = {'loss_class': 1,
