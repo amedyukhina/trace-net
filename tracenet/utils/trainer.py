@@ -85,7 +85,8 @@ class Trainer:
         self.net = DETR(n_points=self.config.n_points if self.config.bezier is False else 4,
                         n_classes=self.config.n_classes,
                         pretrained=not self.config.non_pretrained,
-                        pretrained_model_path=self.config.pretrained_model_path)
+                        pretrained_model_path=self.config.pretrained_model_path,
+                        bezier=self.config.bezier)
 
         # set loss function, validation metric, and forward pass depending on the model type
         self.loss_function = Criterion(self.config.n_classes,

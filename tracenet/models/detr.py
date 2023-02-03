@@ -1,4 +1,5 @@
 import json
+import math
 import os
 
 import torch
@@ -26,7 +27,7 @@ class MLP(nn.Module):
 
 class DETR(nn.Module):
 
-    def __init__(self, n_points=2, n_classes=1, pretrained=True, pretrained_model_path=None):
+    def __init__(self, n_points=2, n_classes=1, pretrained=True, pretrained_model_path=None, bezier=False):
         super().__init__()
         self.detr = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=pretrained)
         hdim = self.detr.transformer.d_model
@@ -43,6 +44,44 @@ class DETR(nn.Module):
 
         self.detr.bbox_embed = MLP(hdim, hdim, n_points * 2, 3)
 
+        theta = - math.pi / 4
+        self.rot_transform = torch.tensor([
+            [math.cos(theta), -math.sin(theta), 0],
+            [math.sin(theta), math.cos(theta), 0],
+            [0, 0, 1]
+        ]).float()
+        self.bezier = bezier
+
     def forward(self, x):
         out = self.detr(x)
-        return {'pred_logits': out['pred_logits'], 'pred_traces': out['pred_boxes']}
+        if self.bezier:
+            shape = out['pred_boxes'].shape
+            p0, p1, p2, p3 = torch.unbind(out['pred_boxes'].reshape(shape[0], shape[1], 4, 2), dim=-2)
+            affine = _get_affine(p0, p3)
+            traces = torch.concat([p0,
+                                   _transform_control_point(p1, self.rot_transform, affine),
+                                   _transform_control_point(p2, self.rot_transform, affine),
+                                   p3], dim=-1)
+        else:
+            traces = out['pred_boxes']
+        return {'pred_logits': out['pred_logits'], 'pred_traces': traces}
+
+
+def _get_affine(p0, p3):
+    p0n = p0.cpu().detach().flatten(0, 1)
+    p3n = p3.cpu().detach().flatten(0, 1)
+    affine = torch.stack([torch.tensor([
+        [(stop[1] - start[1]) * math.sqrt(2), 0, start[1]],
+        [0, (stop[0] - start[0]) * math.sqrt(2), start[0]],
+        [0, 0, 1]
+    ]) for start, stop in zip(p0n, p3n)])
+    return affine
+
+
+def _transform_control_point(p, rot_transform, affine):
+    shape = p.shape
+    p_n = torch.stack([(p[:, :, 1] - 0.5) * 4, p[:, :, 0], torch.ones(shape[0], shape[1]).to(p.device)], dim=-1)
+    p_n = torch.matmul(rot_transform.to(p_n.device), p_n.flatten(0, 1).transpose(0, 1)).transpose(0, 1)
+    p_n = torch.stack([torch.matmul(aff.to(p_n.device), p_n_i) for aff, p_n_i in zip(affine, p_n)])
+    p_n = torch.flip(p_n[:, :2], dims=[-1]).reshape(shape)
+    return p_n

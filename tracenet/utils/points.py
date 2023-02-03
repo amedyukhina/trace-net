@@ -96,6 +96,6 @@ def trace_distance_param(src_traces, target_traces):
 
 def bezier_curve_from_control_points(cpoints, n_points=10):
     t = torch.linspace(0, 1, n_points).unsqueeze(1).unsqueeze(0).to(cpoints.device)
-    b = (1 - t) ** 3 * cpoints[:, 0].unsqueeze(1) + 3 * (1 - t) ** 2 * t * cpoints[:, 1].unsqueeze(1) + \
-        3 * (1 - t) * t ** 2 * cpoints[:, 2].unsqueeze(1) + t ** 3 * cpoints[:, 3].unsqueeze(1)
+    b = (1 - t) ** 3 * cpoints[:, 0].detach().unsqueeze(1) + 3 * (1 - t) ** 2 * t * cpoints[:, 1].unsqueeze(1) + \
+        3 * (1 - t) * t ** 2 * cpoints[:, 2].unsqueeze(1) + t ** 3 * cpoints[:, 3].detach().unsqueeze(1)
     return b
