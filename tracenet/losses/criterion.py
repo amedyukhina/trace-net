@@ -109,8 +109,11 @@ class Criterion(nn.Module):
     def loss_straightness(self, outputs, targets, indices, num_boxes, **_):
         src_traces, _ = get_matching_traces(outputs, targets, indices)
 
+        if self.bezier:
+            assert src_traces.shape[1] == 8
+            src_traces = bezier_curve_from_control_points(src_traces.reshape(-1, 4, 2), 20).reshape(-1, 40)
+
         loss_str = line_straightness_mh(src_traces)
-        loss_str = torch.clamp(loss_str, self.lim_strt)
         losses = {'loss_straightness': loss_str.sum() / num_boxes}
 
         return losses
