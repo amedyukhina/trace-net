@@ -28,13 +28,14 @@ class Criterion(nn.Module):
     """
 
     def __init__(self, num_classes, matcher=None, losses=None, eos_coef=0.1,
-                 symmetric=False, bezier=False):
+                 symmetric=False, bezier=False, lim_strt=5):
         """ Create the criterion.
         Parameters:
             num_classes: number of object categories, omitting the special no-object category
             matcher: module able to compute a matching between targets and proposals
             eos_coef: relative classification weight applied to the no-object category
             losses: list of all the losses to be applied. See get_loss for list of available losses.
+            lim_strt: limit for the straightness loss. The loss will be applied only to values larger than this number.
         """
         super().__init__()
         self.num_classes = num_classes
@@ -47,6 +48,7 @@ class Criterion(nn.Module):
         self.register_buffer('empty_weight', empty_weight)
         self.symmetric = symmetric
         self.bezier = bezier
+        self.lim_strt = lim_strt
 
     def loss_class(self, outputs, targets, indices, **_):
         """Classification loss (NLL)
@@ -107,10 +109,8 @@ class Criterion(nn.Module):
     def loss_straightness(self, outputs, targets, indices, num_boxes, **_):
         src_traces, _ = get_matching_traces(outputs, targets, indices)
 
-        if self.bezier:
-            assert src_traces.shape[1] == 8
-            src_traces = bezier_curve_from_control_points(src_traces.reshape(-1, 4, 2), 20).reshape(-1, 40)
         loss_str = line_straightness_mh(src_traces)
+        loss_str = torch.clamp(loss_str, self.lim_strt)
         losses = {'loss_straightness': loss_str.sum() / num_boxes}
 
         return losses

@@ -43,6 +43,7 @@ DEFAULT_CONFIG = dict(
     weight_spacing=0.5,
     weight_ends=2,
     weight_straightness=0.05,
+    lim_strt=5,
     random_flip=False,
     bezier=False,
     non_pretrained=False,
@@ -90,7 +91,8 @@ class Trainer:
         self.loss_function = Criterion(self.config.n_classes,
                                        losses=self.weight_dict.keys(),
                                        symmetric=self.config.symmetric,
-                                       bezier=self.config.bezier)
+                                       bezier=self.config.bezier,
+                                       lim_strt=self.config.lim_strt)
 
         # send the model and loss to cuda if available
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
