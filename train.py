@@ -35,6 +35,8 @@ if __name__ == '__main__':
                         help='Factor parameter for ReduceOnPlateau learning rate scheduler')
     parser.add_argument('-pt', '--patience', type=int, default=10,
                         help='Patience parameter for ReduceOnPlateau learning rate scheduler')
+    parser.add_argument('-gamma', '--gamma', type=float, default=None,
+                        help='Gamma parameter for the exponential learning rate. If None, use ReduceOnPlateau.')
     parser.add_argument('-wp', '--wandb-project', type=str, default='',
                         help='wandb project name')
     parser.add_argument('-log', '--log-tensorboard', action='store_true')

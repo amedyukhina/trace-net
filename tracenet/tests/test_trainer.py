@@ -21,6 +21,11 @@ def symmetric(request):
     return request.param
 
 
+@pytest.fixture(params=[None, 0.9])
+def gamma(request):
+    return request.param
+
+
 def test_trainer(example_data_path, model_path, n_points, symmetric):
     trainer = Trainer(data_dir=example_data_path, model_path=model_path, symmetric=symmetric,
                       train_dir='', val_dir='', batch_size=1, epochs=2, n_points=n_points, random_flip=True)
@@ -28,9 +33,10 @@ def test_trainer(example_data_path, model_path, n_points, symmetric):
     _assert_output(trainer)
 
 
-def test_trainer_bezier(example_data_path, model_path):
+def test_trainer_bezier(example_data_path, model_path, gamma):
     trainer = Trainer(data_dir=example_data_path, model_path=model_path, symmetric=False, bezier=True,
-                      train_dir='', val_dir='', batch_size=1, epochs=2, n_points=15, random_flip=True)
+                      train_dir='', val_dir='', batch_size=1, epochs=2, n_points=15, random_flip=True,
+                      gamma=gamma)
     trainer.train()
     _assert_output(trainer)
 

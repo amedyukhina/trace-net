@@ -26,6 +26,7 @@ DEFAULT_CONFIG = dict(
     weight_decay=0.0005,
     factor=0.1,
     patience=10,
+    gamma=None,
     model_path='model',
     pretrained_model_path=None,
     log_wandb=False,
@@ -104,12 +105,19 @@ class Trainer:
         self.optimizer = torch.optim.AdamW(self.net.parameters(),
                                            lr=self.config.lr,
                                            weight_decay=self.config.weight_decay)
-        self.lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            self.optimizer,
-            mode='min',
-            factor=self.config.factor,
-            patience=self.config.patience
-        )
+
+        if self.config.gamma is not None:
+            self.lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(
+                self.optimizer,
+                gamma=self.config.gamma
+            )
+        else:
+            self.lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                self.optimizer,
+                mode='min',
+                factor=self.config.factor,
+                patience=self.config.patience
+            )
 
         self.trained = False
 
@@ -179,7 +187,10 @@ class Trainer:
                     self.log_scalar_tb(rf'val {key}', loss_val, epoch + 1)
 
             # update learning rate
-            self.lr_scheduler.step(val_loss)
+            if self.config.gamma is not None:
+                self.lr_scheduler.step()
+            else:
+                self.lr_scheduler.step(val_loss)
 
             # save the model state dict
             self.save_model()  # save last weights (default mode=0)
