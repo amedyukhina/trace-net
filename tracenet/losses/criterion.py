@@ -95,10 +95,11 @@ class Criterion(nn.Module):
                 srctr = get_first_and_last(src_traces.detach())
                 tgtr = get_first_and_last(target_traces.detach())
                 tgtr = torch.stack([tgtr, tgtr.roll(2, -1)])
-                dist = torch.abs(srctr - tgtr).sum(-1)
-                ind = torch.stack([dist.argmin(0), torch.arange(dist.shape[1])])
+                dist = torch.abs(srctr - tgtr).sum(-1).to(src_traces.device)
+                ind = torch.stack([dist.argmin(0),
+                                   torch.arange(dist.shape[1]).to(src_traces.device)]).to(src_traces.device)
                 target_traces = target_traces.reshape(target_traces.shape[0], -1, 2)
-                target_traces = torch.stack([target_traces, target_traces.flip(1)])
+                target_traces = torch.stack([target_traces, target_traces.flip(1)]).to(src_traces.device)
                 target_traces = target_traces[tuple(ind)]
             else:
                 target_traces = target_traces.reshape(target_traces.shape[0], -1, 2)
