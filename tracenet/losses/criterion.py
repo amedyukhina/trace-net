@@ -91,7 +91,18 @@ class Criterion(nn.Module):
         if self.bezier:
             assert src_traces.shape[1] == 8
             b = bezier_curve_from_control_points(src_traces.reshape(-1, 4, 2), 20)
-            loss_trace = trace_distance_param(b, target_traces.reshape(target_traces.shape[0], -1, 2))
+            if self.symmetric:
+                srctr = get_first_and_last(src_traces.detach())
+                tgtr = get_first_and_last(target_traces.detach())
+                tgtr = torch.stack([tgtr, tgtr.roll(2, -1)])
+                dist = torch.abs(srctr - tgtr).sum(-1)
+                ind = torch.stack([dist.argmin(0), torch.arange(dist.shape[1])])
+                target_traces = target_traces.reshape(target_traces.shape[0], -1, 2)
+                target_traces = torch.stack([target_traces, target_traces.flip(1)])
+                target_traces = target_traces[tuple(ind)]
+            else:
+                target_traces = target_traces.reshape(target_traces.shape[0], -1, 2)
+            loss_trace = trace_distance_param(b, target_traces)
         else:
             loss_trace = trace_distance(src_traces, target_traces)
 
