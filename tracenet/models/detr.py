@@ -27,7 +27,7 @@ class MLP(nn.Module):
 
 class DETR(nn.Module):
 
-    def __init__(self, n_points=2, n_classes=1, pretrained=True, pretrained_model_path=None, bezier=False):
+    def __init__(self, n_points=2, n_classes=1, pretrained=True, pretrained_model_path=None):
         super().__init__()
         self.detr = torch.hub.load('facebookresearch/detr:main', 'detr_resnet50', pretrained=pretrained)
         hdim = self.detr.transformer.d_model
@@ -44,27 +44,9 @@ class DETR(nn.Module):
 
         self.detr.bbox_embed = MLP(hdim, hdim, n_points * 2, 3)
 
-        theta = - math.pi / 4
-        self.rot_transform = torch.tensor([
-            [math.cos(theta), -math.sin(theta), 0],
-            [math.sin(theta), math.cos(theta), 0],
-            [0, 0, 1]
-        ]).float()
-        self.bezier = bezier
-
     def forward(self, x):
         out = self.detr(x)
-        if self.bezier:
-            shape = out['pred_boxes'].shape
-            p0, p1, p2, p3 = torch.unbind(out['pred_boxes'].reshape(shape[0], shape[1], 4, 2), dim=-2)
-            affine = _get_affine(p0, p3)
-            traces = torch.concat([p0,
-                                   _transform_control_point(p1, self.rot_transform, affine),
-                                   _transform_control_point(p2, self.rot_transform, affine),
-                                   p3], dim=-1)
-        else:
-            traces = out['pred_boxes']
-        return {'pred_logits': out['pred_logits'], 'pred_traces': traces}
+        return {'pred_logits': out['pred_logits'], 'pred_traces': out['pred_boxes']}
 
 
 def _get_affine(p0, p3):
