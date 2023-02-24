@@ -23,6 +23,17 @@ class Filament(torch.utils.data.Dataset):
     def __init__(self, image_files, ann_files, mean_std=(0, 1), percentiles=(0, 100), transforms=None,
                  intensity_transforms=None, instance_ratio=1, col_id='id', maxsize=512, n_points=2,
                  cols=None, random_flip=False):
+        """
+        image_files, ann_files: lists of image files and csv files with coordinates; filenames must match
+        mean_std: (currently not used) mean and standard deviation for zero-scoring normalization
+        percentiles: percentiles for normalization (normalized between 0 and 1)
+        transforms, intensity_transforms: spatial and intensity transforms; provided separately for the future consistency loss
+        instance_ratio: percentage of anotations to use; currently 1 (all annotations); can be used for future sparse annotations
+        col_id, cols: column encodings for filament ID and coordinates
+        maxsize: maximum size of the image; all images will be zero-padded to this size
+        n_points: number of points in the final trace that will be returned
+        random_flip: set to True to randomly flip trace direction (for augmentation); enable if there no clear starting point for the filaments
+        """
         self.transforms = transforms
         self.intensity_transforms = intensity_transforms
         self.instance_ratio = instance_ratio
@@ -51,16 +62,16 @@ class Filament(torch.utils.data.Dataset):
             raise ValueError(rf"Image size must be less than or equal to {self.maxsize};"
                              rf"current image shape is {image.shape}")
         image, padding = pad_to_size(image, self.maxsize)
-        image = np.dstack([image] * 3)
+        image = np.dstack([image] * 3)  # convert to 3 channels
 
         df = pd.read_csv(ann_id)
 
-        if self.instance_ratio < 1:
+        if self.instance_ratio < 1:  # sample instances for sparse annotation
             df = sample_instances(df, self.instance_ratio, seed=self.seeds[index], col_id=self.col_id)
 
-        points, labels = df_to_points(df, self.cols, self.col_id)
+        points, labels = df_to_points(df, self.cols, self.col_id)  # extract a list of point coordinates and filament IDs
 
-        if self.random_flip:
+        if self.random_flip:  # randomly flip the trace direction
             points, labels = randomly_flip_filaments(points, labels)
 
         target = dict(
@@ -68,18 +79,20 @@ class Filament(torch.utils.data.Dataset):
             point_labels=labels,
         )
 
-        if self.transforms:
+        if self.transforms: # apply spatial transforms
             target, image = apply_transform(self.transforms, target, image)
 
-        if self.n_points > 2:
+        if self.n_points > 2:  # convert traces to a specific number of equally-spaced points
             target['keypoints'], target['point_labels'] = make_points_equally_spaced(target['keypoints'],
                                                                                      target['point_labels'],
                                                                                      self.n_points)
 
+        # generate a labeled mask of the filaments
+        # currently not used, but can be used for additional losses based on the segmentation task
         mask = torch.tensor(generate_labeled_mask(target['keypoints'],
                                                   target['point_labels'],
                                                   image.shape[:2], n_interp=30),
-                            dtype=torch.int64)
+                            dtype=torch.int64) 
         mask = torch.unique(mask, return_inverse=True)[1].reshape(mask.shape)
 
         target['mask'] = (mask > 0) * 1
@@ -88,6 +101,7 @@ class Filament(torch.utils.data.Dataset):
         target['keypoints'] = torch.tensor(target['keypoints'], dtype=torch.float64)
         target['point_labels'] = torch.tensor(target['point_labels'], dtype=torch.int64)
 
+        # normalize and convert traces
         trace = normalize_points(target['keypoints'], image.shape[:2])
         if self.n_points > 2:
             target['trace'] = trace.reshape(-1, self.n_points * 2).float()
@@ -98,6 +112,9 @@ class Filament(torch.utils.data.Dataset):
 
         image = torch.tensor(np.moveaxis(image, -1, 0), dtype=torch.float64)
 
+        # apply intensity transforms
+        # generate two different versions for the future consistency loss
+        # currently, only one version is used
         if self.intensity_transforms:
             image1 = self.transform_intensity(image)
             image2 = self.transform_intensity(image)

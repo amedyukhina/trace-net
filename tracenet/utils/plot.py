@@ -13,6 +13,10 @@ CLASSES = [
 
 
 def plot_traces(img, traces, return_image=False, size=6, n_points=2, ax=None):
+    '''
+    Plotting of the traces return by TraceNet on top of the original image.
+    Input traces and images are provided as torch tensors. Traces are normalized between 0 and 1.
+    '''
     img = normalize(img.numpy())
 
     traces = denormalize_points(traces.reshape(-1, 2), img.shape[-2:]).reshape(-1, n_points * 2)
@@ -33,6 +37,10 @@ def plot_traces(img, traces, return_image=False, size=6, n_points=2, ax=None):
 
 
 def plot_keypoints(img, points, labels, return_image=False, size=6):
+    '''
+    Plot keypoints (debugging).
+    Points are provided in pixel coordinates.
+    '''
     # normalize the image
     img = normalize(img.numpy())
 

@@ -81,14 +81,13 @@ class Trainer:
             if self.config.log_tensorboard else None
 
         # set data loaders and the model
-        # set data loaders and the model
         self.train_dl, self.val_dl = get_loaders(**config)
         self.net = DETR(n_points=self.config.n_points if self.config.bezier is False else 4,
                         n_classes=self.config.n_classes,
                         pretrained=not self.config.non_pretrained,
                         pretrained_model_path=self.config.pretrained_model_path)
 
-        # set loss function, validation metric, and forward pass depending on the model type
+        # set the loss function
         self.loss_function = Criterion(self.config.n_classes,
                                        losses=self.weight_dict.keys(),
                                        symmetric=self.config.symmetric,
@@ -121,12 +120,16 @@ class Trainer:
         self.trained = False
 
     def __del__(self):
+        """Finish wandb process and save the last model if the trainig crashed.
+        """
         if self.log_wandb:
             wandb.finish()
         if self.trained:
             self.save_model()
 
     def _init_project(self):
+        """Initialize the wandb project and logging
+        """
         if self.log_wandb:
             with open(self.config.wandb_api_key_file) as f:
                 key = f.read()

@@ -15,6 +15,9 @@ def get_loaders(data_dir, img_dir='img', gt_dir='gt', train_dir='train', val_dir
                 train_transform=None, valid_transform=None, intensity_transform=None, shuffle=True,
                 maxsize=512, n_points=2, batch_size=2, instance_ratio=1, mean_std=(0, 1), percentiles=(0, 100),
                 random_flip=False, **_):
+    """
+    Get train and validation loaders.
+    """
     # Get Transforms
     dataset = Filament
     transforms = [

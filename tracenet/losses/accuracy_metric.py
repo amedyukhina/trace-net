@@ -7,6 +7,9 @@ from ..utils.points import get_first_and_last, trace_distance, bezier_curve_from
 
 
 class Metric:
+    '''
+    Calculates various accuracy metrics for predicted vs ground truth traces.
+    '''
 
     def __init__(self, matcher=None, bezier=False, min_prob=0.7, dist_scaling=1.):
         self.buffer = dict()

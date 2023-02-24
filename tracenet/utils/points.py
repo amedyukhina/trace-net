@@ -64,7 +64,8 @@ def _dist(x, y):
 
 def point_segment_dist(v, w, p):
     """
-    Pytorch implementation of this solution: https://stackoverflow.com/a/1501725/13120052
+    Distance from a point p to the segment define by points v and w.
+    Pytorch implementation of the solution taken from here: https://stackoverflow.com/a/1501725/13120052
     """
     l2 = ((w - v) ** 2).sum(-1)  # distance squared
     t = ((p - v) * (w - v)).sum(-1) / (l2 + 10 ** (-10))  # relative projection of point p onto the segment
@@ -75,6 +76,9 @@ def point_segment_dist(v, w, p):
 
 
 def trace_distance(src_traces, target_traces):
+    """
+    Distance between source and target traces based on the point-segment distance (of the source points to the target segments).
+    """
     x = torch.stack([target_traces[:, 2 * i:2 * i + 4]
                      for i in range(int(target_traces.shape[-1] / 2) - 1)])  # get all segments of the target
     v = x[:, :, :2]  # first points of all target segments
@@ -89,12 +93,18 @@ def trace_distance(src_traces, target_traces):
 
 
 def trace_distance_param(src_traces, target_traces):
+    """
+    Distance between source and target based on the distance from target points to the closest source points.
+    """
     trace_dist = torch.stack([torch.abs(target_traces[:, i].unsqueeze(1) - src_traces).sum(-1).min(-1)[0]
                               for i in range(target_traces.shape[1])]).mean(0)
     return trace_dist
 
 
 def bezier_curve_from_control_points(cpoints, n_points=10):
+    """
+    Convert Bezier control point to curve coordinates.
+    """
     t = torch.linspace(0, 1, n_points).unsqueeze(1).unsqueeze(0).to(cpoints.device)
     b = (1 - t) ** 3 * cpoints[:, 0].detach().unsqueeze(1) + 3 * (1 - t) ** 2 * t * cpoints[:, 1].unsqueeze(1) + \
         3 * (1 - t) * t ** 2 * cpoints[:, 2].unsqueeze(1) + t ** 3 * cpoints[:, 3].detach().unsqueeze(1)

@@ -1,6 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 """
-Modules to compute the matching cost and solve the corresponding LSAP.
+Module to compute the matching cost and solve the corresponding LSAP.
 
 Adapted from https://github.com/facebookresearch/detr/blob/main/models/matcher.py
 """
@@ -36,8 +36,7 @@ class HungarianMatcher(nn.Module):
         # The 1 is a constant that doesn't change the matching, it can be omitted.
         cost_class = -out_prob[:, tgt_ids]
 
-        # Compute the L1 cost between boxes
-
+        # Compute the distance cost between boxes
         cost_coord = torch.cdist(torch.stack([out_coord, out_coord.roll(2, -1)]),
                                  torch.stack([tgt_coord, tgt_coord]), p=1)
         cost_coord = torch.min(cost_coord, dim=0)[0]

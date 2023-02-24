@@ -57,6 +57,8 @@ def apply_transform(transforms, target, image):
 
 def reshape_image_for_transformer(img, n):
     """
+    Old code: used in earlier experiments with a spatial transformer as a backbone.
+    
     Reshapes the image for a spatial transformer from size NxN to C x n x n.
     The input image size N must be a multiple of the new size n.
 

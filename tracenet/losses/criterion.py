@@ -1,4 +1,6 @@
 """
+Loss function for the TraceNet.
+
 Adapted from https://github.com/facebookresearch/detr/blob/8a144f83a287f4d3fece4acdf073f387c5af387d/models/detr.py#L83
 """
 import torch
@@ -20,7 +22,7 @@ from ..utils.points import (
 
 class Criterion(nn.Module):
     """
-    This class computes the loss for DETR.
+    This class computes the loss for TraceNet.
 
     The process happens in two steps:
         1) we compute hungarian assignment between ground truth points and the outputs of the model
@@ -35,7 +37,7 @@ class Criterion(nn.Module):
             matcher: module able to compute a matching between targets and proposals
             eos_coef: relative classification weight applied to the no-object category
             losses: list of all the losses to be applied. See get_loss for list of available losses.
-            lim_strt: limit for the straightness loss. The loss will be applied only to values larger than this number.
+            lim_strt: (currently not used) limit for the straightness loss. The loss will be applied only to values larger than this number.
         """
         super().__init__()
         self.num_classes = num_classes
@@ -52,7 +54,6 @@ class Criterion(nn.Module):
 
     def loss_class(self, outputs, targets, indices, **_):
         """Classification loss (NLL)
-        targets dicts must contain the key "labels" containing a tensor of dim [nb_target_boxes]
         """
         assert 'pred_logits' in outputs
         src_logits = outputs['pred_logits']
@@ -84,8 +85,6 @@ class Criterion(nn.Module):
 
     def loss_trace_distance(self, outputs, targets, indices, num_boxes, **_):
         """Compute the losses related to the trace coordinates.
-           Targets dicts must contain the key "trace" containing a tensor of dim [nb_target_traces, n_points * 2]
-           The target traces are expected in format (y1, x1, y2, x2 ... yn, xn), normalized by the image size.
         """
         src_traces, target_traces = get_matching_traces(outputs, targets, indices)
         if self.bezier:
@@ -112,6 +111,8 @@ class Criterion(nn.Module):
         return losses
 
     def loss_point_spacing(self, outputs, targets, indices, num_boxes, **_):
+        """Old loss used to regularize the trace coordinates
+        """
         src_traces, _ = get_matching_traces(outputs, targets, indices)
         loss_point_spacing = point_spacing_std(src_traces)
         losses = {'loss_point_spacing': loss_point_spacing.sum() / num_boxes}
@@ -119,6 +120,8 @@ class Criterion(nn.Module):
         return losses
 
     def loss_straightness(self, outputs, targets, indices, num_boxes, **_):
+        """Used to regularize the trace coordinates
+        """
         src_traces, _ = get_matching_traces(outputs, targets, indices)
 
         if self.bezier:
